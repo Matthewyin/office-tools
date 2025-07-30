@@ -209,10 +209,31 @@ def main():
             print("🎉 Mac应用构建完成！")
             print("=" * 50)
             print(f"📁 应用位置: dist/{APP_NAME}.app")
-            print("💡 使用提示:")
+
+            # 尝试进行代码签名
+            app_path = f"dist/{APP_NAME}.app"
+            if Path(app_path).exists():
+                print("\n� 尝试代码签名...")
+                try:
+                    # 使用ad-hoc签名（本地开发用）
+                    subprocess.run([
+                        "codesign", "--force", "--deep", "--sign", "-",
+                        app_path
+                    ], check=True, capture_output=True)
+                    print("✅ 代码签名成功（ad-hoc签名）")
+                except subprocess.CalledProcessError:
+                    print("⚠️  代码签名失败，但应用仍可使用")
+                except FileNotFoundError:
+                    print("⚠️  未找到codesign工具")
+
+            print("\n�💡 使用提示:")
             print("  - 双击.app文件启动应用")
             print("  - 可以拖拽到Applications文件夹")
-            print("  - 首次运行可能需要在系统偏好设置中允许")
+            print("  - 首次运行如遇安全提示:")
+            print("    1. 点击'取消'")
+            print("    2. 打开'系统偏好设置' → '安全性与隐私'")
+            print("    3. 点击'仍要打开'")
+            print("  - 或使用命令: sudo xattr -rd com.apple.quarantine dist/PDF转换工具.app")
             print()
 
     except Exception as e:
