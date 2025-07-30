@@ -43,42 +43,28 @@ python -m office2pdf.converter document.txt
 python -m office2pdf.converter /path/to/files -r
 ```
 
-## ⚠️ 关于Mac应用打包
+## 💡 使用建议
 
-### 重要说明
-由于macOS的安全机制，打包的.app应用可能无法正常启动。**推荐直接使用Python版本**，功能完全相同且更稳定。
+### 推荐启动方式
+**双击启动**是最简单的方式，无需处理任何技术细节：
+- 双击 `启动PDF转换工具.command` 文件
+- 自动处理环境设置和依赖检查
+- 直接启动GUI界面
 
-### 如果仍需打包（可选）
-```bash
-# 1. 确保在项目根目录
-cd /path/to/Officetools
-
-# 2. 激活虚拟环境
-source .venv/bin/activate
-
-# 3. 构建Mac应用
-python office2pdf/setup_app.py py2app
-
-# 4. 启动应用
-open dist/PDF转换工具.app
-```
-
-### 注意事项
-- ✅ 必须在项目根目录运行打包命令
-- ✅ 构建过程中的权限警告是正常的
-- ✅ 构建成功后应用位于 `dist/PDF转换工具.app`
-- ✅ 首次运行可能需要在系统偏好设置中允许
+### 为什么不推荐Mac应用打包？
+- macOS安全机制会阻止未签名的应用
+- 需要复杂的权限设置和用户干预
+- Python版本功能完全相同且更稳定
 
 ## 🔧 故障排除
 
 ### 常见问题
-1. **找不到主脚本文件**: 确保在项目根目录运行
-2. **权限错误**: 这些是正常警告，不影响应用功能
-3. **应用无法启动**: 检查macOS安全设置
+1. **虚拟环境未找到**: 运行 `uv venv && source .venv/bin/activate && uv pip install -e .`
+2. **依赖缺失**: 启动脚本会自动安装缺失的依赖
+3. **GUI无法启动**: 检查Python环境和依赖安装
 
 ### 获取帮助
 - 详细文档: [office2pdf/README.md](office2pdf/README.md)
-- 构建指南: [office2pdf/BUILD_INSTRUCTIONS.md](office2pdf/BUILD_INSTRUCTIONS.md)
 - 技术架构: [office2pdf/ARCHITECTURE.md](office2pdf/ARCHITECTURE.md)
 
 ---

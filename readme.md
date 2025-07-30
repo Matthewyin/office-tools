@@ -15,6 +15,20 @@ uv pip install -e .
 ```
 
 ### 启动应用
+
+#### 方法1: 双击启动（推荐）
+```bash
+# 双击文件启动
+启动PDF转换工具.command
+```
+
+#### 方法2: 一键脚本
+```bash
+# 运行启动脚本
+./start_app.sh
+```
+
+#### 方法3: 手动启动
 ```bash
 # 启动GUI界面
 python office2pdf/run_gui.py
@@ -48,19 +62,19 @@ Officetools/
 - ✅ 支持多种格式：Office文件、txt、md、drawio转换为PDF
 - ✅ 图形用户界面，支持文件选择按钮
 - ✅ 命令行批量处理
-- ✅ Mac应用打包支持
+- ✅ 多种启动方式（双击启动、脚本启动、手动启动）
 - ✅ 跨平台兼容（Windows、macOS、Linux）
 
 **快速使用**：
 ```bash
-# GUI界面
+# GUI界面（推荐）
+./启动PDF转换工具.command
+
+# 或手动启动
 python office2pdf/run_gui.py
 
 # 命令行转换
 python -m office2pdf.converter document.txt
-
-# Mac应用打包
-python office2pdf/setup_app.py py2app
 ```
 
 **详细文档**：[office2pdf/README.md](office2pdf/README.md)
@@ -78,8 +92,8 @@ python office2pdf/setup_app.py py2app
 ## 📚 文档导航
 
 - **[Office2PDF详细文档](office2pdf/README.md)** - 完整的使用指南
+- **[快速开始指南](QUICK_START.md)** - 简明使用说明
 - **[技术架构文档](office2pdf/ARCHITECTURE.md)** - 系统设计说明
-- **[Mac应用构建指南](office2pdf/BUILD_INSTRUCTIONS.md)** - 打包说明
 
 ## 🤝 贡献指南
 

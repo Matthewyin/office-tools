@@ -15,8 +15,22 @@ uv pip install -e .
 ```
 
 ### 启动GUI界面
+
+#### 方法1: 双击启动（推荐）
 ```bash
-# 启动GUI界面
+# 双击文件启动（在项目根目录）
+启动PDF转换工具.command
+```
+
+#### 方法2: 一键脚本
+```bash
+# 运行启动脚本（在项目根目录）
+./start_app.sh
+```
+
+#### 方法3: 手动启动
+```bash
+# 从项目根目录启动
 python office2pdf/run_gui.py
 ```
 
@@ -33,7 +47,7 @@ python -m office2pdf.converter /path/to/files -r -w 4
 
 - ✅ **扩展格式支持**: 新增txt、md、drawio文件转换
 - ✅ **图形用户界面**: 提供友好的GUI界面，支持文件选择按钮
-- ✅ **Mac应用打包**: 可打包为原生Mac应用程序
+- ✅ **多种启动方式**: 双击启动、脚本启动、手动启动
 - ✅ **性能优化**: 保留并优化了并发处理功能
 - ✅ **向后兼容**: 完全兼容v1.0的所有功能
 
@@ -260,10 +274,12 @@ office2pdf/
 ├── utils.py                 # 工具函数
 ├── README.md                # 详细说明文档
 ├── ARCHITECTURE.md          # 系统架构文档
-├── USER_MANUAL.md           # 用户操作手册
-├── GUI_USER_GUIDE.md        # GUI使用指南
-├── MAC_APP_GUIDE.md         # Mac应用打包指南
-└── GUI_TROUBLESHOOTING.md   # 故障排除指南
+├── BUILD_INSTRUCTIONS.md    # 构建说明（可选）
+├── MACOS_SECURITY_GUIDE.md  # macOS安全设置指南
+├── run_gui.py               # GUI启动脚本
+├── setup_app.py             # Mac应用打包脚本（可选）
+├── verify_installation.py   # 安装验证脚本
+└── icons/                   # 应用图标资源
 ```
 
 ## 📄 许可证
@@ -330,98 +346,38 @@ Matthew Yin (2738550@qq.com)
 2. 观察转换进度和日志信息
 3. 转换完成后查看结果
 
-## 🍎 Mac应用打包指南
+## 💡 启动方式说明
 
-### 前提条件
-1. **macOS系统**: macOS 10.12 或更高版本
-2. **Python环境**: Python 3.8+
-3. **uv包管理器**: 已安装并配置
-4. **Xcode命令行工具**: 用于编译原生组件
+### 推荐启动方式
 
-### 快速构建步骤
+#### 1. 双击启动（最简单）
+在项目根目录双击 `启动PDF转换工具.command` 文件：
+- ✅ 自动检查和激活虚拟环境
+- ✅ 自动安装缺失的依赖
+- ✅ 直接启动GUI界面
+- ✅ 无需任何技术操作
 
-#### 1. 准备环境
+#### 2. 一键脚本启动
 ```bash
-# 确保在项目根目录
-cd /path/to/Officetools
+# 在项目根目录运行
+./start_app.sh
+```
 
+#### 3. 手动启动
+```bash
 # 激活虚拟环境
 source .venv/bin/activate
 
-# 验证uv可用
-uv --version
+# 启动GUI
+python office2pdf/run_gui.py
 ```
 
-#### 2. 安装构建依赖
-```bash
-# 使用uv安装py2app（推荐）
-uv pip install py2app
+### 为什么推荐Python版本？
 
-# 或者让脚本自动安装
-python setup_app.py
-```
-
-#### 3. 构建应用
-```bash
-# 开始构建Mac应用
-python setup_app.py py2app
-
-# 构建完成后清理（可选）
-python setup_app.py clean
-```
-
-#### 4. 测试应用
-```bash
-# 启动构建的应用
-open dist/PDF转换工具.app
-
-# 或者在Finder中双击应用图标
-```
-
-### 构建过程说明
-
-脚本会自动：
-- ✅ 检测uv是否可用
-- ✅ 安装py2app（如果未安装）
-- ✅ 验证setuptools可用性
-- ✅ 显示详细的构建进度
-
-### 构建故障排除
-
-#### 常见问题
-
-**1. uv未找到**
-```bash
-# 安装uv
-curl -LsSf https://astral.sh/uv/install.sh | sh
-
-# 或使用Homebrew
-brew install uv
-```
-
-**2. py2app安装失败**
-```bash
-# 手动安装
-uv pip install py2app
-
-# 如果仍然失败，尝试pip
-pip install py2app
-```
-
-**3. 构建失败**
-```bash
-# 清理之前的构建
-python setup_app.py clean
-rm -rf build/ dist/
-
-# 重新构建
-python setup_app.py py2app
-```
-
-**4. 应用无法启动**
-- 检查macOS安全设置
-- 在"系统偏好设置 > 安全性与隐私"中允许应用
-- 确保LibreOffice已安装
+- **无安全限制**: 避免macOS应用安全机制
+- **更稳定**: 不依赖复杂的应用打包
+- **功能完整**: 所有功能都正常工作
+- **跨版本兼容**: 适用于所有macOS版本
 
 ## 🔧 故障排除指南
 
