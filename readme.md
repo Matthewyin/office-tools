@@ -27,11 +27,8 @@ uv pip install -e .
 
 #### 1. 图形界面（推荐）
 ```bash
-# 标准GUI界面
+# 启动GUI界面
 python run_gui.py
-
-# 如果遇到macOS兼容性问题，使用简化版
-python run_gui_simple.py
 ```
 
 #### 2. 命令行使用
@@ -125,8 +122,7 @@ Officetools/
 │   ├── GUI_USER_GUIDE.md            # GUI使用指南
 │   ├── MAC_APP_GUIDE.md             # Mac应用打包指南
 │   └── GUI_TROUBLESHOOTING.md       # 故障排除指南
-├── run_gui.py                       # 标准GUI启动脚本
-├── run_gui_simple.py                # 简化GUI启动脚本
+├── run_gui.py                       # GUI启动脚本
 ├── setup_app.py                     # Mac应用打包脚本
 ├── verify_installation.py           # 安装验证脚本
 ├── pyproject.toml                   # 项目配置

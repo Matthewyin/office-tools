@@ -16,10 +16,7 @@ uv pip install -e .
 
 ### 启动GUI界面
 ```bash
-# 简化版GUI（推荐，macOS兼容）
-python run_gui_simple.py
-
-# 标准版GUI
+# 启动GUI界面
 python run_gui.py
 ```
 
@@ -98,8 +95,8 @@ pip install -e .
 
 #### 1. 启动应用
 ```bash
-# 简化版（推荐）
-python run_gui_simple.py
+# 启动GUI界面
+python run_gui.py
 ```
 
 #### 2. 操作步骤
