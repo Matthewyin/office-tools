@@ -11,7 +11,7 @@
 """
 
 import tkinter as tk
-from tkinter import ttk, messagebox, scrolledtext
+from tkinter import ttk, messagebox, scrolledtext, filedialog
 import threading
 import queue
 import datetime
@@ -68,18 +68,33 @@ class SimpleConverterGUI:
         formats_label.pack(pady=(0, 15))
         
         # 输入区域
-        input_frame = ttk.LabelFrame(main_frame, text="输入文件/目录路径", padding="10")
+        input_frame = ttk.LabelFrame(main_frame, text="选择文件或目录", padding="10")
         input_frame.pack(fill=tk.X, pady=(0, 10))
-        
-        ttk.Label(input_frame, text="请输入文件路径或目录路径（多个文件用分号;分隔）:").pack(anchor=tk.W, pady=(0, 5))
-        
+
+        # 路径输入和按钮区域
+        path_frame = ttk.Frame(input_frame)
+        path_frame.pack(fill=tk.X, pady=(0, 5))
+
+        ttk.Label(path_frame, text="选择的文件/目录:").pack(anchor=tk.W, pady=(0, 5))
+
+        # 路径输入框和按钮
+        entry_button_frame = ttk.Frame(path_frame)
+        entry_button_frame.pack(fill=tk.X)
+
         self.input_var = tk.StringVar()
-        input_entry = ttk.Entry(input_frame, textvariable=self.input_var, width=80)
-        input_entry.pack(fill=tk.X, pady=(0, 5))
-        
-        # 示例
-        example_text = "示例: /Users/username/document.docx 或 /Users/username/documents/"
-        ttk.Label(input_frame, text=example_text, font=('TkDefaultFont', 8), foreground='gray').pack(anchor=tk.W)
+        input_entry = ttk.Entry(entry_button_frame, textvariable=self.input_var)
+        input_entry.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=(0, 5))
+
+        # 选择按钮
+        ttk.Button(entry_button_frame, text="选择文件", command=self._select_files, width=12).pack(side=tk.LEFT, padx=(0, 5))
+        ttk.Button(entry_button_frame, text="选择目录", command=self._select_directory, width=12).pack(side=tk.LEFT)
+
+        # 示例和说明
+        help_frame = ttk.Frame(input_frame)
+        help_frame.pack(fill=tk.X, pady=(5, 0))
+
+        example_text = "提示: 可以选择单个/多个文件，或选择包含文件的目录"
+        ttk.Label(help_frame, text=example_text, font=('TkDefaultFont', 8), foreground='gray').pack(anchor=tk.W)
         
         # 输出目录
         output_frame = ttk.LabelFrame(main_frame, text="输出目录（可选）", padding="10")
@@ -136,7 +151,79 @@ class SimpleConverterGUI:
         
         # 添加初始提示
         self._log_message("欢迎使用多格式文件转PDF工具 v2.0")
-        self._log_message("请在上方输入文件路径或目录路径，然后点击'开始转换'")
+        self._log_message("请点击'选择文件'或'选择目录'按钮，然后点击'开始转换'")
+
+    def _select_files(self):
+        """安全的文件选择方法"""
+        try:
+            # 使用最简单的文件选择，避免filetypes参数
+            files = filedialog.askopenfilenames(
+                title="选择要转换的文件",
+                parent=self.root
+            )
+
+            if files:
+                # 将文件路径用分号连接
+                file_paths = ";".join(files)
+                self.input_var.set(file_paths)
+                self._log_message(f"已选择 {len(files)} 个文件")
+
+                # 显示选择的文件
+                for i, file_path in enumerate(files[:3]):  # 只显示前3个
+                    self._log_message(f"  {i+1}. {Path(file_path).name}")
+                if len(files) > 3:
+                    self._log_message(f"  ... 还有 {len(files)-3} 个文件")
+
+        except Exception as e:
+            self._log_message(f"文件选择失败: {e}", "ERROR")
+            # 提供手动输入的提示
+            self._log_message("请手动输入文件路径，多个文件用分号(;)分隔", "INFO")
+
+    def _select_directory(self):
+        """安全的目录选择方法"""
+        try:
+            directory = filedialog.askdirectory(
+                title="选择包含文件的目录",
+                parent=self.root
+            )
+
+            if directory:
+                self.input_var.set(directory)
+                self._log_message(f"已选择目录: {Path(directory).name}")
+
+                # 预览目录中的支持文件
+                self._preview_directory_files(Path(directory))
+
+        except Exception as e:
+            self._log_message(f"目录选择失败: {e}", "ERROR")
+            # 提供手动输入的提示
+            self._log_message("请手动输入目录路径", "INFO")
+
+    def _preview_directory_files(self, directory: Path):
+        """预览目录中的支持文件"""
+        try:
+            supported_extensions = {'.docx', '.doc', '.xlsx', '.xls', '.pptx', '.ppt',
+                                   '.txt', '.md', '.markdown', '.drawio', '.dio'}
+
+            # 查找支持的文件
+            supported_files = []
+            for file_path in directory.iterdir():
+                if file_path.is_file() and file_path.suffix.lower() in supported_extensions:
+                    if not file_path.name.startswith('~$'):  # 跳过临时文件
+                        supported_files.append(file_path)
+
+            if supported_files:
+                self._log_message(f"目录中找到 {len(supported_files)} 个支持的文件:")
+                for i, file_path in enumerate(supported_files[:5]):  # 只显示前5个
+                    self._log_message(f"  {i+1}. {file_path.name}")
+                if len(supported_files) > 5:
+                    self._log_message(f"  ... 还有 {len(supported_files)-5} 个文件")
+            else:
+                self._log_message("目录中没有找到支持的文件", "WARNING")
+                self._log_message("支持的格式: .docx, .xlsx, .pptx, .txt, .md, .drawio", "INFO")
+
+        except Exception as e:
+            self._log_message(f"预览目录文件失败: {e}", "WARNING")
     
     def _log_message(self, message: str, level: str = "INFO"):
         """添加日志消息"""

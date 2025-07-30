@@ -100,6 +100,11 @@ python run_gui_simple.py
 
 ## 📖 详细文档
 
+### 使用指南
+- [GUI用户使用指南](GUI_USER_GUIDE.md) - 图形界面详细使用说明
+- [Mac应用打包指南](MAC_APP_GUIDE.md) - 打包为Mac应用的完整指南
+- [故障排除指南](GUI_TROUBLESHOOTING.md) - 常见问题解决方案
+
 请查看 [office2pdf/README.md](office2pdf/README.md) 获取完整的使用说明和配置指南。
 
 ## ✅ 项目验证

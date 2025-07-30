@@ -146,35 +146,45 @@ class ConverterGUI:
     
     def _select_files(self):
         """选择文件"""
-        # 修复macOS上的文件类型问题
-        filetypes = [
-            ("Office文件", "*.docx *.doc *.xlsx *.xls *.pptx *.ppt"),
-            ("文本文件", "*.txt"),
-            ("Markdown文件", "*.md *.markdown"),
-            ("Draw.io文件", "*.drawio *.dio"),
-            ("所有文件", "*.*")
-        ]
-
         try:
+            # 首先尝试不带文件类型的简单版本
             files = filedialog.askopenfilenames(
                 title="选择要转换的文件",
-                filetypes=filetypes
+                parent=self.root
             )
 
             if files:
                 self.input_var.set(";".join(files))
+                self._log_message(f"已选择 {len(files)} 个文件")
+                return
+
         except Exception as e:
-            # 如果文件对话框失败，使用简化版本
-            self._log_message(f"文件选择对话框错误: {e}", "WARNING")
-            try:
-                files = filedialog.askopenfilenames(
-                    title="选择要转换的文件"
-                )
-                if files:
-                    self.input_var.set(";".join(files))
-            except Exception as e2:
-                self._log_message(f"无法打开文件选择对话框: {e2}", "ERROR")
-                messagebox.showerror("错误", "无法打开文件选择对话框，请手动输入文件路径")
+            self._log_message(f"文件选择失败: {e}", "WARNING")
+
+        # 如果简单版本失败，尝试带文件类型的版本
+        try:
+            # 使用更安全的文件类型格式
+            filetypes = [
+                ("Office文件", "*.docx *.doc *.xlsx *.xls *.pptx *.ppt"),
+                ("文本文件", "*.txt"),
+                ("Markdown文件", "*.md *.markdown"),
+                ("Draw.io文件", "*.drawio *.dio"),
+                ("所有文件", "*.*")
+            ]
+
+            files = filedialog.askopenfilenames(
+                title="选择要转换的文件",
+                filetypes=filetypes,
+                parent=self.root
+            )
+
+            if files:
+                self.input_var.set(";".join(files))
+                self._log_message(f"已选择 {len(files)} 个文件")
+
+        except Exception as e2:
+            self._log_message(f"无法打开文件选择对话框: {e2}", "ERROR")
+            messagebox.showinfo("提示", "文件选择对话框不可用，请手动在输入框中输入文件路径\n多个文件用分号(;)分隔")
     
     def _select_directory(self):
         """选择目录"""
