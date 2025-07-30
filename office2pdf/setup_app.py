@@ -41,12 +41,12 @@ APP_VERSION = "2.0.0"
 APP_AUTHOR = "Matthew Yin"
 
 # 主脚本
-APP_SCRIPT = 'run_gui.py'
+APP_SCRIPT = 'office2pdf/run_gui.py'
 
 # 应用选项
 OPTIONS = {
     'argv_emulation': True,
-    'iconfile': 'icons/o2p_icon.icns',  # O2P图标文件
+    'iconfile': 'office2pdf/icons/o2p_icon.icns',  # O2P图标文件
     'plist': {
         'CFBundleName': APP_NAME,
         'CFBundleDisplayName': APP_NAME,

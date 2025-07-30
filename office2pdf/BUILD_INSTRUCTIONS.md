@@ -29,16 +29,16 @@ uv --version
 uv pip install py2app
 
 # 或者让脚本自动安装
-python setup_app.py
+python office2pdf/setup_app.py
 ```
 
 #### 3. 构建应用
 ```bash
 # 开始构建Mac应用
-python setup_app.py py2app
+python office2pdf/setup_app.py py2app
 
 # 构建完成后清理（可选）
-python setup_app.py clean
+python office2pdf/setup_app.py clean
 ```
 
 #### 4. 测试应用
@@ -104,11 +104,11 @@ pip install py2app
 **3. 构建失败**
 ```bash
 # 清理之前的构建
-python setup_app.py clean
+python office2pdf/setup_app.py clean
 rm -rf build/ dist/
 
 # 重新构建
-python setup_app.py py2app
+python office2pdf/setup_app.py py2app
 ```
 
 **4. 应用无法启动**
@@ -123,10 +123,10 @@ python setup_app.py py2app
 uv pip install -e .
 
 # 验证安装
-python verify_installation.py
+python office2pdf/verify_installation.py
 
 # 测试GUI
-python run_gui.py
+python office2pdf/run_gui.py
 ```
 
 ### 📁 构建文件说明

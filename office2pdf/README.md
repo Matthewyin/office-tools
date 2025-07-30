@@ -17,7 +17,7 @@ uv pip install -e .
 ### 启动GUI界面
 ```bash
 # 启动GUI界面
-python run_gui.py
+python office2pdf/run_gui.py
 ```
 
 ### 命令行使用
@@ -96,7 +96,7 @@ pip install -e .
 #### 1. 启动应用
 ```bash
 # 启动GUI界面
-python run_gui.py
+python office2pdf/run_gui.py
 ```
 
 #### 2. 操作步骤
