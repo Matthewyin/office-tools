@@ -27,7 +27,11 @@ uv pip install -e .
 
 #### 1. 图形界面（推荐）
 ```bash
+# 标准GUI界面
 python run_gui.py
+
+# 如果遇到macOS兼容性问题，使用简化版
+python run_gui_simple.py
 ```
 
 #### 2. 命令行使用
@@ -84,6 +88,15 @@ python setup_app.py py2app
 ```
 
 详细说明请查看 [MAC_APP_GUIDE.md](MAC_APP_GUIDE.md)
+
+## 🐛 故障排除
+
+如果在macOS上遇到GUI崩溃问题，请使用简化版GUI：
+```bash
+python run_gui_simple.py
+```
+
+详细的故障排除指南请查看 [GUI_TROUBLESHOOTING.md](GUI_TROUBLESHOOTING.md)
 
 ## 📖 详细文档
 
