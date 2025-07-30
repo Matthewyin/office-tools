@@ -16,7 +16,7 @@ Office转PDF工具包
 """
 
 from .config import config
-from .office_to_pdf import OfficeConverter
+from .converter import UniversalConverter
 from .utils import (
     ensure_output_directory,
     find_office_files,
@@ -25,12 +25,16 @@ from .utils import (
     validate_input_path,
 )
 
-__version__ = "1.0.0"
+__version__ = "2.0.0"
 __author__ = "Matthew Yin"
 __email__ = "2738550@qq.com"
 
+# 向后兼容
+OfficeConverter = UniversalConverter
+
 __all__ = [
-    "OfficeConverter",
+    "UniversalConverter",
+    "OfficeConverter",  # 向后兼容
     "config",
     "find_office_files",
     "validate_input_path",
