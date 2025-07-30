@@ -34,6 +34,9 @@ python office2pdf/setup_app.py
 
 #### 3. 构建应用
 ```bash
+# 确保在项目根目录
+cd /path/to/Officetools
+
 # 开始构建Mac应用
 python office2pdf/setup_app.py py2app
 
