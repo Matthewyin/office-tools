@@ -232,3 +232,6 @@ tmp/
 # Local configuration
 config.local.py
 settings.local.py
+
+
+.env.example
