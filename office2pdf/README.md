@@ -1,27 +1,69 @@
-# Office转PDF工具
+# 多格式文件转PDF工具 v2.0
 
-一个功能完整的Python工具，用于将Microsoft Office文件（Word、Excel、PowerPoint）转换为PDF格式。
+一个功能强大的Python工具包，支持多种格式文件转换为PDF，包括Office文件、文本文件、Markdown文件等。
 
-## 功能特性
+## 🚀 快速开始
 
-- ✅ 支持多种Office格式：`.docx`, `.doc`, `.xlsx`, `.xls`, `.pptx`, `.ppt`
-- ✅ 批量转换整个目录的文件
-- ✅ 递归处理子目录
-- ✅ 自动跳过临时文件（如`~$`开头的文件）
-- ✅ 详细的日志记录
-- ✅ 跨平台支持（Windows、macOS、Linux）
-- ✅ 类型提示和完整的错误处理
-- ✅ 配置文件支持
+### 安装依赖
+```bash
+# 创建虚拟环境（推荐使用uv）
+uv venv
+source .venv/bin/activate
 
-## 系统要求
+# 安装项目依赖
+uv pip install -e .
+```
 
-### 必需软件
+### 启动GUI界面
+```bash
+# 简化版GUI（推荐，macOS兼容）
+python run_gui_simple.py
 
-1. **Python 3.8+**
-2. **LibreOffice** - 用于实际的文件转换
+# 标准版GUI
+python run_gui.py
+```
 
-### LibreOffice安装
+### 命令行使用
+```bash
+# 转换单个文件
+python -m office2pdf.converter document.txt
 
+# 批量转换目录
+python -m office2pdf.converter /path/to/files -r -w 4
+```
+
+## 🆕 v2.0 新功能
+
+- ✅ **扩展格式支持**: 新增txt、md、drawio文件转换
+- ✅ **图形用户界面**: 提供友好的GUI界面，支持文件选择按钮
+- ✅ **Mac应用打包**: 可打包为原生Mac应用程序
+- ✅ **性能优化**: 保留并优化了并发处理功能
+- ✅ **向后兼容**: 完全兼容v1.0的所有功能
+
+## 📋 支持的文件格式
+
+| 类型 | 扩展名 | 转换方式 | 说明 |
+|------|--------|----------|------|
+| **Office文件** | `.docx`, `.doc`, `.xlsx`, `.xls`, `.pptx`, `.ppt` | LibreOffice | 完整支持 |
+| **文本文件** | `.txt` | ReportLab | 纯文本转PDF |
+| **Markdown文件** | `.md`, `.markdown` | Markdown + ReportLab | 支持基本格式 |
+| **Draw.io文件** | `.drawio`, `.dio` | Draw.io Desktop | 需要额外安装 |
+
+## 🛠️ 系统要求
+
+### 最低要求
+- **Python**: 3.8+ 
+- **LibreOffice**: 用于Office文件转换
+- **操作系统**: Windows, macOS, Linux
+
+### 推荐配置
+- **Python**: 3.10+
+- **内存**: 4GB RAM 或更多
+- **存储**: 至少500MB可用空间
+
+## 📦 安装说明
+
+### 1. 安装LibreOffice
 ```bash
 # macOS
 brew install --cask libreoffice
@@ -29,228 +71,216 @@ brew install --cask libreoffice
 # Ubuntu/Debian
 sudo apt-get install libreoffice
 
-# CentOS/RHEL
-sudo yum install libreoffice
-
 # Windows
 # 从官网下载安装: https://www.libreoffice.org/
 ```
 
-### Python依赖
-
+### 2. 安装Draw.io Desktop（可选）
 ```bash
-# 安装项目依赖
-pip install -r requirements.txt
+# macOS
+brew install --cask drawio
 
-# 或者使用项目根目录的pyproject.toml
+# 或从GitHub下载: https://github.com/jgraph/drawio-desktop
+```
+
+### 3. 安装Python依赖
+```bash
+# 使用uv（推荐）
+uv pip install -e .
+
+# 或使用pip
 pip install -e .
 ```
 
-## 使用方法
+## 🎯 使用方法
 
-### 标准版本（适合单文件或小批量）
+### GUI界面使用
 
+#### 1. 启动应用
+```bash
+# 简化版（推荐）
+python run_gui_simple.py
+```
+
+#### 2. 操作步骤
+1. **选择文件**: 点击"选择文件"按钮选择要转换的文件
+2. **选择目录**: 点击"选择目录"按钮选择包含文件的目录
+3. **设置选项**: 配置输出目录、递归处理、并发数等
+4. **开始转换**: 点击"开始转换"按钮并查看实时日志
+
+### 命令行使用
+
+#### 基本用法
 ```bash
 # 转换单个文件
-python office_to_pdf.py document.docx
+python -m office2pdf.converter document.docx
 
-# 转换目录中的所有Office文件
-python office_to_pdf.py /path/to/office/files
+# 转换多种格式
+python -m office2pdf.converter file.txt file.md file.docx
 
-# 递归转换子目录
-python office_to_pdf.py /path/to/files -r
+# 批量转换目录
+python -m office2pdf.converter /path/to/files -r
 
-# 指定输出目录
-python office_to_pdf.py document.xlsx -o /output/directory
+# 指定输出目录和并发数
+python -m office2pdf.converter /path/to/files -o /output -w 4
 ```
 
-### 优化版本（适合大批量转换，速度提升2-3倍）
-
+#### 高级选项
 ```bash
-# 并发转换目录（默认2个线程）
-python office_to_pdf_optimized.py /path/to/office/files
+# 递归处理子目录
+python -m office2pdf.converter /path/to/files --recursive
 
-# 指定并发线程数
-python office_to_pdf_optimized.py /path/to/files -w 4
+# 设置并发线程数
+python -m office2pdf.converter /path/to/files --workers 8
 
-# 递归转换子目录
-python office_to_pdf_optimized.py /path/to/files -r -w 3
-
-# 如果遇到问题，可回退到顺序模式
-python office_to_pdf_optimized.py /path/to/files --sequential
+# 顺序处理（禁用并发）
+python -m office2pdf.converter /path/to/files --sequential
 ```
 
-### 性能测试
+### 编程接口
 
-```bash
-# 运行性能对比测试
-python performance_test.py
-```
-
-### 编程接口使用
-
+#### 基本使用
 ```python
-from office_to_pdf import OfficeConverter
+from office2pdf import UniversalConverter
 
 # 创建转换器
-converter = OfficeConverter(output_dir="/path/to/output")
+converter = UniversalConverter(output_dir="/path/to/output")
 
 # 转换单个文件
-success = converter.convert_file("document.docx")
+success = converter.convert_file("document.md")
 
 # 批量转换目录
 stats = converter.convert_directory("/path/to/files", recursive=True)
 print(f"成功: {stats['success']}, 失败: {stats['failed']}")
 ```
 
-## 配置选项
+#### 高级配置
+```python
+from office2pdf import UniversalConverter
 
-可以通过`.env`文件或环境变量进行配置：
+# 创建高性能转换器
+converter = UniversalConverter(
+    output_dir="/path/to/output",
+    max_workers=4  # 并发线程数
+)
+
+# 转换并获取详细结果
+success = converter.convert_file("document.txt")
+if success:
+    print("转换成功")
+else:
+    print("转换失败，请查看日志")
+
+# 清理资源
+converter.cleanup()
+```
+
+## ⚙️ 配置选项
+
+### 环境变量配置
+可以通过环境变量或`.env`文件配置：
 
 ```bash
-# .env文件示例
+# 转换超时时间（秒）
 CONVERSION_TIMEOUT=300
-DEFAULT_OUTPUT_DIR=/path/to/default/output
+
+# 日志级别
 LOG_LEVEL=INFO
+
+# 日志目录
 LOG_DIR=logs
+
+# 跳过临时文件
 SKIP_TEMP_FILES=true
+
+# 覆盖已存在的PDF文件
 OVERWRITE_EXISTING=false
-PDF_QUALITY=default
+
+# PDF质量设置
+PDF_QUALITY=standard
 ```
 
-### 配置参数说明
-
-- `CONVERSION_TIMEOUT`: 转换超时时间（秒），默认300
-- `DEFAULT_OUTPUT_DIR`: 默认输出目录
-- `LOG_LEVEL`: 日志级别（DEBUG, INFO, WARNING, ERROR）
-- `LOG_DIR`: 日志文件目录
-- `SKIP_TEMP_FILES`: 是否跳过临时文件
-- `OVERWRITE_EXISTING`: 是否覆盖已存在的PDF文件
-- `PDF_QUALITY`: PDF质量（low, default, high）
-
-## 项目结构
-
-```
-Officetools/
-├── office_to_pdf.py    # 主转换器模块
-├── config.py           # 配置管理
-├── utils.py            # 实用工具函数
-├── test_converter.py   # 测试脚本
-└── README.md           # 说明文档
+### 配置文件示例
+创建`.env`文件：
+```env
+CONVERSION_TIMEOUT=600
+LOG_LEVEL=DEBUG
+OVERWRITE_EXISTING=true
+PDF_QUALITY=high
 ```
 
-## 测试
+## 🔧 故障排除
 
-运行测试脚本检查环境配置：
+### 常见问题
 
+#### 1. LibreOffice未找到
 ```bash
-python test_converter.py
+# 检查安装
+which soffice
+
+# macOS安装
+brew install --cask libreoffice
+
+# 验证安装
+soffice --version
 ```
 
-测试脚本会检查：
-- LibreOffice是否正确安装
-- 配置是否有效
-- 转换器基本功能
-- 目录权限
+#### 2. GUI崩溃问题
+```bash
+# 使用简化版GUI
+python run_gui_simple.py
 
-## 日志
-
-工具会在`logs/`目录下生成详细的日志文件：
-
-```
-logs/
-└── office_converter_20250129_143022.log
+# 或使用命令行版本
+python -m office2pdf.converter
 ```
 
-日志包含：
-- 转换过程详情
-- 错误信息和堆栈跟踪
-- 系统信息
-- 性能统计
+#### 3. 转换失败
+- 检查文件是否损坏
+- 确认文件格式是否支持
+- 查看日志文件获取详细错误信息
+- 确保有足够的磁盘空间
 
-## 错误处理
+#### 4. 权限问题
+- 确保有读取源文件的权限
+- 确保输出目录可写
+- 在macOS上可能需要授予应用权限
 
-常见问题及解决方案：
+### 日志文件
+转换日志保存在`logs/`目录下，包含详细的转换信息和错误信息。
 
-### 1. LibreOffice未找到
+## 📚 详细文档
 
-```
-错误: LibreOffice未安装
-解决: 安装LibreOffice并确保命令行可访问
-```
+- **[用户操作手册](USER_MANUAL.md)** - 完整的用户操作指南
+- **[系统架构文档](ARCHITECTURE.md)** - 技术架构和设计说明
+- **[GUI使用指南](GUI_USER_GUIDE.md)** - 图形界面详细使用说明
+- **[Mac应用打包指南](MAC_APP_GUIDE.md)** - 打包为Mac应用的完整指南
+- **[故障排除指南](GUI_TROUBLESHOOTING.md)** - 常见问题解决方案
 
-### 2. 转换超时
-
-```
-错误: 转换超时
-解决: 增加CONVERSION_TIMEOUT值或检查文件是否损坏
-```
-
-### 3. 权限错误
+## 🏗️ 项目结构
 
 ```
-错误: 无法写入输出目录
-解决: 检查目录权限或更改输出目录
+office2pdf/
+├── __init__.py              # 包初始化
+├── converter.py             # 通用转换器核心
+├── gui.py                   # 标准GUI界面
+├── config.py                # 配置管理
+├── utils.py                 # 工具函数
+├── README.md                # 详细说明文档
+├── ARCHITECTURE.md          # 系统架构文档
+├── USER_MANUAL.md           # 用户操作手册
+├── GUI_USER_GUIDE.md        # GUI使用指南
+├── MAC_APP_GUIDE.md         # Mac应用打包指南
+└── GUI_TROUBLESHOOTING.md   # 故障排除指南
 ```
 
-### 4. 文件被占用
-
-```
-错误: 文件正在使用中
-解决: 关闭Office应用程序或等待文件释放
-```
-
-## 性能优化
-
-### 两个版本对比
-
-| 特性 | 标准版 | 优化版 |
-|------|--------|--------|
-| 单文件转换 | 7秒左右 | 2-3秒 |
-| 批量转换 | 顺序处理 | 并发处理 |
-| 内存占用 | 低 | 中等 |
-| 稳定性 | 高 | 高 |
-| 适用场景 | 单文件、小批量 | 大批量转换 |
-
-### 优化技术
-
-1. **LibreOffice守护进程模式**: 避免重复启动LibreOffice
-2. **并发处理**: 多线程同时转换多个文件
-3. **优化启动参数**: 减少不必要的LibreOffice功能
-4. **智能回退**: 守护进程失败时自动回退到标准模式
-
-### 性能调优建议
-
-- 大文件转换可能需要较长时间，建议调整超时设置
-- 批量转换时建议使用SSD存储以提高I/O性能
-- 可以通过`PDF_QUALITY`设置平衡文件大小和质量
-- 并发线程数建议设置为CPU核心数的1-2倍
-- 内存不足时减少并发线程数
-
-## 开发规范
-
-本项目严格遵循现代Python开发规范：
-
-- ✅ 使用类型提示（Type Hints）
-- ✅ 遵循PEP 8代码风格
-- ✅ 完整的错误处理和日志记录
-- ✅ 模块化设计和单一职责原则
-- ✅ 详细的中文注释和文档字符串
-- ✅ 使用`pathlib`进行路径操作
-- ✅ 环境变量和配置文件管理
-
-## 许可证
+## 📄 许可证
 
 MIT License
 
-## 作者
+## 👨‍💻 作者
 
-Matthew Yin (tccio2023@gmail.com)  
+Matthew Yin (2738550@qq.com)
 
-## 更新日志
+---
 
-### v1.0.0 (2025-01-29)
-- 初始版本发布
-- 支持Word、Excel、PowerPoint转PDF
-- 批量转换和递归处理
-- 完整的配置和日志系统
+*最后更新: 2025-07-30*
