@@ -3,9 +3,26 @@
 ## 📋 使用Office2PDF工具
 
 ### 1. 启动GUI界面
+
+#### 方法1: 双击启动（推荐）
+```bash
+# 双击文件启动
+启动PDF转换工具.command
+```
+
+#### 方法2: 一键脚本
+```bash
+# 运行启动脚本
+./start_app.sh
+```
+
+#### 方法3: 手动启动
 ```bash
 # 确保在项目根目录
 cd /path/to/Officetools
+
+# 激活虚拟环境
+source .venv/bin/activate
 
 # 启动图形界面
 python office2pdf/run_gui.py
@@ -26,9 +43,12 @@ python -m office2pdf.converter document.txt
 python -m office2pdf.converter /path/to/files -r
 ```
 
-## 🍎 Mac应用打包
+## ⚠️ 关于Mac应用打包
 
-### 快速打包步骤
+### 重要说明
+由于macOS的安全机制，打包的.app应用可能无法正常启动。**推荐直接使用Python版本**，功能完全相同且更稳定。
+
+### 如果仍需打包（可选）
 ```bash
 # 1. 确保在项目根目录
 cd /path/to/Officetools
