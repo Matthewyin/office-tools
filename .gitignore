@@ -50,6 +50,7 @@ coverage.xml
 .hypothesis/
 .pytest_cache/
 cover/
+.env.example
 
 # Translations
 *.mo
@@ -234,4 +235,4 @@ config.local.py
 settings.local.py
 
 
-.env.example
+
