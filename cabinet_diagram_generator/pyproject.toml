@@ -61,19 +61,22 @@ test = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/example/cabinet-diagram-generator"
-Documentation = "https://cabinet-diagram-generator.readthedocs.io/"
-Repository = "https://github.com/example/cabinet-diagram-generator.git"
-"Bug Tracker" = "https://github.com/example/cabinet-diagram-generator/issues"
+Homepage = "https://github.com/Matthewyin/office-tools"
+Documentation = "https://github.com/Matthewyin/office-tools/tree/main/cabinet_diagram_generator/docs"
+Repository = "https://github.com/Matthewyin/office-tools.git"
+"Bug Tracker" = "https://github.com/Matthewyin/office-tools/issues"
 
 [project.scripts]
-cabinet-diagram = "cabinet_diagram_generator.cli:main"
+cabinet-diagram = "src.main:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]
 
 [tool.setuptools.package-dir]
 "" = "src"
+
+# uv scripts配置 - 现代化的命令行工具
+# 注意：uv scripts 功能可能在某些版本中不可用，使用标准的 project.scripts 替代
 
 # Ruff配置
 [tool.ruff]

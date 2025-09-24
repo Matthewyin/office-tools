@@ -46,28 +46,50 @@ cabinet_diagram_generator/
 ### 环境要求
 
 - Python 3.8+
-- uv 包管理工具（推荐）
+- [uv](https://docs.astral.sh/uv/) 包管理工具（推荐）
 
-### 安装依赖
+### 现代化使用方式（推荐）
+
+使用 `uv run` 直接运行，无需手动管理虚拟环境：
+
+```bash
+cd cabinet_diagram_generator
+
+# 生成机柜部署图
+uv run python -m src.main generate input/cmdb.csv --output output/cabinet_diagram.drawio
+
+# 验证CSV数据
+uv run python -m src.main validate input/cmdb.csv
+
+# 预览布局信息
+uv run python -m src.main preview input/cmdb.csv
+```
+
+### 使用项目脚本
+
+如果安装了项目，可以使用全局命令：
+
+```bash
+# 安装项目到环境中
+uv pip install -e .
+
+# 使用全局命令
+cabinet-diagram generate input/cmdb.csv --output output/cabinet_diagram.drawio
+```
+
+### 传统方式（备选）
+
+如果您更喜欢传统的虚拟环境管理：
 
 ```bash
 cd cabinet_diagram_generator
 uv venv
-source .venv/bin/activate
+source .venv/bin/activate  # Linux/macOS
+# 或 .venv\Scripts\activate  # Windows
 uv pip install -e .
-```
 
-### 基本使用
-
-```bash
-# 生成机柜部署图
-python -m src.main generate input/cmdb.csv --output output/cabinet_diagram.drawio
-
-# 验证CSV数据
-python -m src.main validate input/cmdb.csv
-
-# 预览布局信息
-python -m src.main preview input/cmdb.csv
+# 然后使用标准Python命令
+python -m src.main generate input/cmdb.csv
 ```
 
 ## 输入数据格式
