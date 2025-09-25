@@ -270,9 +270,10 @@ class DrawioGenerator:
         cabinet_title = f"{cabinet.机柜}"
 
         # 计算机柜标题位置：机柜标题底端与机柜黑色框顶端保持10像素间距
-        # 机柜框顶端Y坐标就是y（U42底部）
+        # 机柜框顶端Y坐标 = U42顶部 = y - 20
         # 机柜标题位置：机柜框顶端上方，标题高度20像素 + 间距10像素
-        cabinet_title_y = y - 30  # 标题高度20 + 间距10
+        u42_top_y = y + self.config.机柜高度 - (42 * self.config.U位高度) - self.config.U位高度
+        cabinet_title_y = u42_top_y - 30  # 标题高度20 + 间距10
 
         self._create_cabinet_title(parent, cabinet_title, x, cabinet_title_y)
     
@@ -281,9 +282,15 @@ class DrawioGenerator:
         """创建机柜背景框架"""
         # 机柜背景框应该完全覆盖U1到U42的范围
         # 根据U位网格计算逻辑：
-        # U42的底部Y坐标 = y + 机柜高度 - (42 * U位高度) = y + 840 - 840 = y
-        # U1的底部Y坐标 = y + 机柜高度 - (1 * U位高度) = y + 840 - 20 = y + 820
-        # 所以机柜框应该从y开始，高度为840
+        # U42: u_bottom_y = y + 840 - (42 * 20) = y, u_top_y = y - 20
+        # U1: u_bottom_y = y + 840 - (1 * 20) = y + 820, u_top_y = y + 800
+        # 所以机柜框应该从U42顶部(y-20)开始，到U1底部(y+820)结束
+
+        u42_top_y = y + self.config.机柜高度 - (42 * self.config.U位高度) - self.config.U位高度
+        u1_bottom_y = y + self.config.机柜高度 - (1 * self.config.U位高度) + self.config.U位高度
+
+        cabinet_bg_y = u42_top_y
+        cabinet_bg_height = u1_bottom_y - u42_top_y
 
         cell = ET.SubElement(parent, "mxCell")
         cell.set("id", self._get_next_id())
@@ -296,9 +303,9 @@ class DrawioGenerator:
 
         geometry = ET.SubElement(cell, "mxGeometry")
         geometry.set("x", str(x))
-        geometry.set("y", str(y))  # 从U42底部开始
+        geometry.set("y", str(cabinet_bg_y))  # 从U42顶部开始
         geometry.set("width", str(self.config.机柜宽度))
-        geometry.set("height", str(self.config.机柜高度))  # 完整的840像素高度
+        geometry.set("height", str(cabinet_bg_height))  # 精确的高度
         geometry.set("as", "geometry")
 
     def _create_u_grid(self, parent: ET.Element, x: int, y: int) -> None:
