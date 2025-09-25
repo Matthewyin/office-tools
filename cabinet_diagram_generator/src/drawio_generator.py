@@ -212,34 +212,109 @@ class DrawioGenerator:
         geometry.set("height", "30")
         geometry.set("as", "geometry")
 
+    def _group_cabinets_by_row(self, cabinets: List[Cabinet]) -> Dict[str, List[Cabinet]]:
+        """
+        按行对机柜进行分组
+
+        Args:
+            cabinets: 机柜列表
+
+        Returns:
+            按行分组的机柜字典，键为行标识（如A、B、C），值为该行的机柜列表
+        """
+        from collections import defaultdict
+        import re
+
+        rows = defaultdict(list)
+
+        for cabinet in cabinets:
+            # 从机柜编号中提取行标识
+            # 例如：A01 -> A, B02 -> B, C03 -> C
+            match = re.match(r'^([A-Za-z]+)', cabinet.机柜)
+            if match:
+                row_id = match.group(1).upper()
+                rows[row_id].append(cabinet)
+            else:
+                # 如果无法解析行标识，放入默认行
+                rows['DEFAULT'].append(cabinet)
+
+        # 按行标识排序
+        sorted_rows = {}
+        for row_id in sorted(rows.keys()):
+            # 按机柜编号排序每行内的机柜
+            sorted_cabinets = sorted(rows[row_id], key=lambda c: c.机柜)
+            sorted_rows[row_id] = sorted_cabinets
+
+        return sorted_rows
+
     def _generate_room_sheet(self, parent: ET.Element, room_name: str,
                             cabinets: List[Cabinet]) -> None:
         """
-        为单个机房生成sheet页内容
+        为单个机房生成sheet页内容（支持多行布局）
 
         Args:
             parent: 父XML元素
             room_name: 机房名称
             cabinets: 机柜列表
         """
-        # 计算机柜布局
+        # 按行对机柜进行分组
+        cabinet_rows = self._group_cabinets_by_row(cabinets)
+
+        # 计算布局参数
         start_x = 50
         start_y = 50
-        current_x = start_x
+        row_spacing = self.config.机柜高度 + 150  # 行间距：机柜高度 + 额外间距
+
+        # 计算总的机房尺寸
+        max_cabinets_per_row = max(len(row_cabinets) for row_cabinets in cabinet_rows.values()) if cabinet_rows else 0
+        room_width = max_cabinets_per_row * (self.config.机柜宽度 + self.config.机柜间距) - self.config.机柜间距
 
         # 生成机房标题（可选）
         if self.config.显示机房标题:
-            room_width = len(cabinets) * (self.config.机柜宽度 + self.config.机柜间距) - self.config.机柜间距
-            # 机房标题位置需要考虑机柜标题的新位置，进一步上移
-            # 机柜框顶端Y坐标就是start_y
-            # 机房标题位置：机柜标题上方再留出空间
+            # 机房标题位置：第一行机柜上方
             room_title_y = start_y - 70  # 机柜标题30 + 间距10 + 机房标题高度30
             self._create_room_title(parent, f"机房 {room_name}", start_x, room_title_y, room_width)
 
-        # 生成所有机柜
-        for cabinet in cabinets:
-            self._generate_cabinet(parent, cabinet, current_x, start_y)
-            current_x += self.config.机柜宽度 + self.config.机柜间距
+        # 按行生成机柜
+        current_row_y = start_y
+        for row_id in sorted(cabinet_rows.keys()):
+            row_cabinets = cabinet_rows[row_id]
+
+            # 生成行标识（可选）
+            if len(cabinet_rows) > 1:  # 只有多行时才显示行标识
+                self._create_row_title(parent, f"{row_id}行", start_x - 80, current_row_y, row_cabinets)
+
+            # 生成该行的所有机柜
+            current_x = start_x
+            for cabinet in row_cabinets:
+                self._generate_cabinet(parent, cabinet, current_x, current_row_y)
+                current_x += self.config.机柜宽度 + self.config.机柜间距
+
+            # 移动到下一行
+            current_row_y += row_spacing
+
+    def _create_row_title(self, parent: ET.Element, title: str, x: int, y: int,
+                         row_cabinets: List[Cabinet]) -> None:
+        """创建行标识"""
+        # 计算行标识的垂直居中位置
+        row_height = self.config.机柜高度
+        title_y = y + row_height // 2 - 10  # 居中显示
+
+        cell = ET.SubElement(parent, "mxCell")
+        cell.set("id", self._get_next_id())
+        cell.set("value", title)
+        cell.set("style", f"text;html=1;strokeColor=none;fillColor=none;"
+                         f"align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;"
+                         f"fontSize=14;fontColor={self.config.文字颜色};fontStyle=1")
+        cell.set("vertex", "1")
+        cell.set("parent", "1")
+
+        geometry = ET.SubElement(cell, "mxGeometry")
+        geometry.set("x", str(x))
+        geometry.set("y", str(title_y))
+        geometry.set("width", "60")
+        geometry.set("height", "20")
+        geometry.set("as", "geometry")
 
     def _generate_cabinet(self, parent: ET.Element, cabinet: Cabinet,
                          x: int, y: int) -> None:
