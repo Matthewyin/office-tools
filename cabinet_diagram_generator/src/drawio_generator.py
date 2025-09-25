@@ -258,12 +258,11 @@ class DrawioGenerator:
         for device in cabinet.设备列表:
             self._create_device(parent, device, x, y)
 
-        # 创建机柜标题
+        # 创建机柜标题（只显示机柜编号，不显示区域信息）
         cabinet_title = f"{cabinet.机柜}"
-        if self.config.显示区域信息 and cabinet.location_info:
-            cabinet_title += f"\n({cabinet.location_info})"
 
-        self._create_cabinet_title(parent, cabinet_title, x, y - 25)
+        # 机柜标题位置调整到机柜上方，适应新的机柜高度
+        self._create_cabinet_title(parent, cabinet_title, x, y - 30)
     
     def _create_cabinet_background(self, parent: ET.Element, cabinet: Cabinet,
                                   x: int, y: int) -> None:
