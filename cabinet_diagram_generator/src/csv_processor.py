@@ -95,7 +95,7 @@ class CSVProcessor:
         self.format_type = detect_csv_format(df)
         logger.info(f"检测到CSV格式: {self.format_type}")
         return self.format_type
-    
+
     def _is_empty_or_invalid_row(self, row: pd.Series, field_mapping: Dict[str, str]) -> Tuple[bool, str]:
         """
         检查行是否为空或关键字段缺失
@@ -123,38 +123,36 @@ class CSVProcessor:
 
     def validate_data(self, df: Optional[pd.DataFrame] = None) -> List[str]:
         """
-        验证数据完整性和有效性（跳过空行和无效行）
-
+        验证数据完整性和有效性
+        
         Args:
             df: DataFrame，如果为None则使用已加载的数据
-
+            
         Returns:
             错误信息列表
         """
         if df is None:
             df = self.raw_data
-
+        
         if df is None:
             raise DataValidationError("没有可用的数据进行验证")
-
+        
         errors = []
-        skipped_rows = 0
-        skipped_reasons = {}
-
+        
         # 检查是否为空
         if df.empty:
             errors.append("CSV文件为空")
             return errors
-
+        
         # 检测格式
         format_type = self.detect_format(df)
         if format_type == "unknown":
             errors.append("无法识别CSV格式，请检查列名是否正确")
             return errors
-
+        
         # 获取字段映射
         field_mapping = self.config.get_field_mapping(format_type)
-
+        
         # 检查必需字段
         missing_fields = []
         for required_field in self.config.必需字段:
@@ -164,14 +162,17 @@ class CSVProcessor:
                 if mapped == required_field and orig in df.columns:
                     original_field = orig
                     break
-
+            
             if original_field is None:
                 missing_fields.append(required_field)
-
+        
         if missing_fields:
             errors.append(f"缺少必需字段: {', '.join(missing_fields)}")
-
+        
         # 逐行验证数据（跳过空行和无效行）
+        skipped_rows = 0
+        skipped_reasons = {}
+
         for index, row in df.iterrows():
             # 检查是否需要跳过此行
             should_skip, skip_reason = self._is_empty_or_invalid_row(row, field_mapping)
@@ -233,34 +234,34 @@ class CSVProcessor:
     
     def convert_to_devices(self, df: Optional[pd.DataFrame] = None) -> List[Device]:
         """
-        将DataFrame转换为Device对象列表（跳过空行和无效行）
-
+        将DataFrame转换为Device对象列表
+        
         Args:
             df: DataFrame，如果为None则使用已加载的数据
-
+            
         Returns:
             Device对象列表
-
+            
         Raises:
             DataValidationError: 数据验证失败
         """
         if df is None:
             df = self.raw_data
-
+        
         if df is None:
             raise DataValidationError("没有可用的数据进行转换")
-
-        # 验证数据（现在会跳过无效行，只对有效行报错）
+        
+        # 验证数据
         errors = self.validate_data(df)
         if errors:
             error_msg = "\n".join(errors[:10])  # 只显示前10个错误
             if len(errors) > 10:
                 error_msg += f"\n... 还有 {len(errors) - 10} 个错误"
             raise DataValidationError(f"数据验证失败:\n{error_msg}")
-
+        
         # 获取字段映射
         field_mapping = self.config.get_field_mapping(self.format_type)
-
+        
         devices = []
         skipped_count = 0
 
