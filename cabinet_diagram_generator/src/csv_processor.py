@@ -327,19 +327,26 @@ class CSVProcessor:
         
         # 数据类型转换和标准化
         try:
-            # 解析U位
-            device_data["U位"] = parse_u_position(device_data.get("U位", "1"))
-            
-            # 解析设备高度
+            # 解析U位（只使用起始U，忽略结束U）
+            u_position_value = device_data.get("U位", "1")
+            device_data["U位"] = parse_u_position(u_position_value)
+
+            # 如果有结束U位字段，记录但不使用
+            if "结束U位" in device_data:
+                logger.debug(f"检测到结束U位字段，但按配置忽略: {device_data['结束U位']}")
+                # 移除结束U位字段，确保不被使用
+                del device_data["结束U位"]
+
+            # 解析设备高度（使用CSV中的设备高度字段）
             device_data["设备高度"] = parse_device_height(device_data.get("设备高度", "1"))
-            
+
             # 标准化设备用途
             device_data["设备用途"] = standardize_device_purpose(device_data.get("设备用途", "其他"))
-            
+
             # 处理机柜字段（兼容旧格式的"机柜号"）
             if "机柜" not in device_data and "机柜号" in device_data:
                 device_data["机柜"] = device_data["机柜号"]
-            
+
         except Exception as e:
             raise DataValidationError(f"数据转换失败: {e}")
         

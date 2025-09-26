@@ -37,10 +37,10 @@ field_mappings:
       "机柜号": "机柜"
       "U位": "U位"
 
-  # 新格式：支持起始U和结束U
+  # 新格式：支持起始U（只使用起始U，忽略结束U）
   range_format:
-    name: "范围格式"
-    description: "支持起始U和结束U的格式"
+    name: "起始U格式"
+    description: "使用起始U字段确定设备U位，忽略结束U"
     required_fields: ["机房", "机柜", "起始U"]
     field_mapping:
       "序号": "资产编号"
@@ -56,7 +56,6 @@ field_mappings:
       "机房": "机房"
       "机柜": "机柜"
       "起始U": "U位"
-      "结束U": "结束U位"
       "厂商": "厂商"
 
   # 自定义格式示例
@@ -109,10 +108,14 @@ detection:
 # 数据处理配置
 processing:
   # 是否自动计算设备高度（当有起始U和结束U时）
-  auto_calculate_height: true
-  
+  # 注意：当前逻辑只使用起始U，不使用结束U
+  auto_calculate_height: false
+
   # 是否跳过空行
   skip_empty_rows: true
-  
+
   # 是否跳过关键字段为空的行
   skip_invalid_rows: true
+
+  # U位处理策略
+  u_position_strategy: "start_u_only"  # 只使用起始U，忽略结束U
