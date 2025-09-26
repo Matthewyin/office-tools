@@ -73,11 +73,65 @@ class CsvTopologyWriter:
 
     def write(self, path: Path, links: Iterable[Link]) -> None:
         path.parent.mkdir(parents=True, exist_ok=True)
-        with path.open("w", encoding=self.encoding, newline="") as fh:
-            writer = csv.DictWriter(fh, fieldnames=self.schema.headers)
+
+        # 为Excel兼容性添加BOM
+        if self.encoding.lower() == "utf-8":
+            with path.open("wb") as fh:
+                # 写入UTF-8 BOM
+                fh.write(b'\xef\xbb\xbf')
+
+            # 然后以追加模式写入CSV内容
+            with path.open("a", encoding=self.encoding, newline="") as fh:
+                writer = csv.DictWriter(fh, fieldnames=self.schema.headers)
+                writer.writeheader()
+                for link in links:
+                    writer.writerow(self._link_to_row(link))
+        else:
+            # 非UTF-8编码的正常处理
+            with path.open("w", encoding=self.encoding, newline="") as fh:
+                writer = csv.DictWriter(fh, fieldnames=self.schema.headers)
+                writer.writeheader()
+                for link in links:
+                    writer.writerow(self._link_to_row(link))
+
+    def write_for_excel(self, path: Path, links: Iterable[Link]) -> None:
+        """专门为Excel优化的写入方法，Mac和Windows Excel都能正确显示中文"""
+        path.parent.mkdir(parents=True, exist_ok=True)
+
+        # 使用UTF-8 BOM + 特殊处理确保跨平台兼容
+        with path.open("wb") as fh:
+            # 写入UTF-8 BOM，这是关键
+            fh.write(b'\xef\xbb\xbf')
+
+        # 以追加模式写入CSV内容，使用特殊的CSV方言
+        with path.open("a", encoding="utf-8", newline="") as fh:
+            # 使用Excel兼容的CSV方言
+            writer = csv.DictWriter(
+                fh,
+                fieldnames=self.schema.headers,
+                dialect='excel',  # 使用Excel方言
+                quoting=csv.QUOTE_ALL  # 所有字段都加引号，提高兼容性
+            )
             writer.writeheader()
             for link in links:
                 writer.writerow(self._link_to_row(link))
+
+    def write_for_excel_universal(self, path: Path, links: Iterable[Link]) -> None:
+        """通用Excel兼容方法，同时生成UTF-8 BOM和GBK两个版本"""
+        # 生成UTF-8 BOM版本（主要文件）
+        self.write_for_excel(path, links)
+
+        # 生成GBK版本作为备选（添加_gbk后缀）
+        gbk_path = path.with_suffix('.gbk.csv')
+        gbk_writer = CsvTopologyWriter(self.schema, encoding='gbk')
+        gbk_writer.write(gbk_path, links)
+
+        print(f"已生成两个版本:")
+        print(f"  主文件 (UTF-8 BOM): {path}")
+        print(f"  备选文件 (GBK): {gbk_path}")
+        print(f"建议:")
+        print(f"  - Mac Excel: 使用 {path.name}")
+        print(f"  - Windows Excel: 优先尝试 {path.name}，如有乱码则使用 {gbk_path.name}")
 
     def _link_to_row(self, link: Link) -> dict[str, str]:
         row: dict[str, str] = {}

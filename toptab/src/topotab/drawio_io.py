@@ -579,6 +579,143 @@ class DrawioTopologyReader:
     """Convert draw.io documents back into topology objects."""
 
     def read(self, path: Path) -> Topology:
+        """读取我们工具生成的draw.io文件"""
+        return self._read_structured(path)
+
+    def read_generic(self, path: Path) -> Topology:
+        """读取标准的draw.io文件，尝试推断设备和连接"""
+        tree = ET.parse(path)
+        diagram = tree.find("diagram")
+        if diagram is None:
+            raise ValueError("Invalid draw.io file: missing diagram element")
+        graph_model = diagram.find("mxGraphModel")
+        if graph_model is None:
+            raise ValueError("Invalid draw.io file: missing mxGraphModel")
+        root = graph_model.find("root")
+        if root is None:
+            raise ValueError("Invalid draw.io file: missing root element")
+
+        topology = Topology()
+        devices: Dict[str, Device] = {}
+        device_cells: Dict[str, ET.Element] = {}
+
+        # 第一遍：识别设备（矩形节点）
+        for cell in root.findall("mxCell"):
+            cell_id = cell.attrib.get("id", "")
+            value = cell.attrib.get("value", "").strip()
+            style = cell.attrib.get("style", "")
+
+            # 跳过根节点和边
+            if cell_id in ["0", "1"] or cell.attrib.get("edge") == "1":
+                continue
+
+            # 识别设备：有value且style包含矩形相关属性
+            if (value and
+                ("rounded=1" in style or "whiteSpace=wrap" in style or "vertex" in cell.attrib) and
+                "swimlane" not in style):  # 排除区域
+
+                # 清理设备名称（移除HTML标签）
+                import re
+                clean_value = re.sub(r'<[^>]+>', '', value)
+                clean_value = clean_value.replace('&nbsp;', ' ').strip()
+
+                if clean_value:
+                    device = Device(
+                        device_name=clean_value,
+                        management_address="",  # 标准draw.io文件中没有这些信息
+                        region="",
+                        parent_region="",
+                        device_model=clean_value,  # 使用设备名作为型号
+                        device_type="网络设备",
+                        cabinet="",
+                        u_position=""
+                    )
+
+                    device_key = clean_value
+                    devices[device_key] = device
+                    device_cells[cell_id] = cell
+
+        # 第二遍：识别连接（边）
+        links = []
+        for cell in root.findall("mxCell"):
+            if cell.attrib.get("edge") == "1":
+                source_id = cell.attrib.get("source", "")
+                target_id = cell.attrib.get("target", "")
+
+                # 查找源和目标设备
+                source_device = None
+                target_device = None
+                source_device_name = None
+                target_device_name = None
+
+                # 查找源设备
+                if source_id in device_cells:
+                    source_cell = device_cells[source_id]
+                    import re
+                    source_device_name = re.sub(r'<[^>]+>', '', source_cell.attrib.get("value", "")).replace('&nbsp;', ' ').strip()
+                    source_device = devices.get(source_device_name)
+
+                # 查找目标设备
+                if target_id in device_cells:
+                    target_cell = device_cells[target_id]
+                    import re
+                    target_device_name = re.sub(r'<[^>]+>', '', target_cell.attrib.get("value", "")).replace('&nbsp;', ' ').strip()
+                    target_device = devices.get(target_device_name)
+
+                if (source_device and target_device and
+                    source_device_name != target_device_name):  # 过滤自连接
+                    # 创建链路
+                    src_endpoint = Endpoint(
+                        device_name=source_device.device_name,
+                        management_address=source_device.management_address,
+                        parent_region=source_device.parent_region,
+                        region=source_device.region,
+                        device_model=source_device.device_model,
+                        device_type=source_device.device_type,
+                        cabinet=source_device.cabinet,
+                        u_position=source_device.u_position,
+                        port_channel="",
+                        physical_interface="",
+                        vrf="",
+                        vlan="",
+                        interface_ip=""
+                    )
+
+                    dst_endpoint = Endpoint(
+                        device_name=target_device.device_name,
+                        management_address=target_device.management_address,
+                        parent_region=target_device.parent_region,
+                        region=target_device.region,
+                        device_model=target_device.device_model,
+                        device_type=target_device.device_type,
+                        cabinet=target_device.cabinet,
+                        u_position=target_device.u_position,
+                        port_channel="",
+                        physical_interface="",
+                        vrf="",
+                        vlan="",
+                        interface_ip=""
+                    )
+
+                    link = Link(
+                        sequence=len(links) + 1,
+                        src=src_endpoint,
+                        dst=dst_endpoint,
+                        usage="连接",
+                        cable_type="",
+                        bandwidth="",
+                        remark=""
+                    )
+
+                    links.append(link)
+
+        # 构建拓扑
+        topology.devices = {device.device_name: device for device in devices.values()}
+        topology.links = links
+
+        return topology
+
+    def _read_structured(self, path: Path) -> Topology:
         tree = ET.parse(path)
         diagram = tree.find("diagram")
         if diagram is None:
