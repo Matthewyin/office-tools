@@ -255,3 +255,11 @@ demo_*.drawio
 # 项目特定的临时文件
 *.backup
 *.bak
+*.bkp
+*.$*.bkp
+
+# 输出文件
+*.csv
+*.gbk.csv
+toptab/output/
+toptab/input/*.drawio
