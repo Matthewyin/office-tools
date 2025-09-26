@@ -216,7 +216,6 @@ $RECYCLE.BIN/
 
 # Project specific
 logs/
-*.log
 
 # Temporary files
 temp/
@@ -227,12 +226,32 @@ tmp/
 # Office temporary files
 ~$*
 
-# PDF output files (for testing)
-*.pdf
-
 # Local configuration
 config.local.py
 settings.local.py
 
+# 输出目录中的生成文件
+output/*.drawio
+output/*.csv
+output/*.json
+output/*.pdf
 
+# 输入目录中的临时文件（保留模板和示例）
+input/*.tmp
+input/temp*
 
+# 测试生成的文件
+*_roundtrip.csv
+*_test.drawio
+test_*.drawio
+demo_*.drawio
+
+# UV package manager
+.uv/
+
+# Ruff cache
+.ruff_cache/
+
+# 项目特定的临时文件
+*.backup
+*.bak
