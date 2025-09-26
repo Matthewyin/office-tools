@@ -444,7 +444,8 @@ class DrawioGenerator:
         device_end_u = device.U位 + device.设备高度 - 1  # 设备结束U位
 
         # 设备顶部Y坐标 = 结束U位的顶部边界
-        device_top_y = cabinet_y + self.config.机柜高度 - ((device_end_u + 1) * self.config.U位高度)
+        # 修正：移除多余的+1，确保设备正确对齐到指定的U位
+        device_top_y = cabinet_y + self.config.机柜高度 - (device_end_u * self.config.U位高度)
         device_y = device_top_y
 
         # 设备尺寸：完全覆盖U位网格
