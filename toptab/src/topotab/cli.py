@@ -8,6 +8,15 @@ from __future__ import annotations
 import argparse
 import sys
 from pathlib import Path
+
+# 启用readline支持（用于行编辑功能）
+try:
+    import readline
+    # 启用Tab补全和历史记录
+    readline.parse_and_bind("tab: complete")
+except ImportError:
+    # Windows上可能没有readline，但不影响基本功能
+    pass
 from typing import List, Optional
 
 from .csv_io import CsvTopologyReader, CsvTopologyWriter
@@ -49,10 +58,7 @@ def convert_command(args):
 
         # 读取draw.io文件
         reader = DrawioTopologyReader()
-        if not args.structured:  # 默认使用通用读取器
-            topology = reader.read_generic(input_path)
-        else:
-            topology = reader.read(input_path)
+        topology = reader.read_generic(input_path)  # 使用通用读取器，自动检测文件格式
 
         print(f"成功读取 {len(topology.devices)} 个设备, {len(topology.links)} 条链路")
 
@@ -63,8 +69,10 @@ def convert_command(args):
                 print(f"  {i}. {name}")
 
         # 过滤有效链路（非自连接）
+        # 自连接的判断：设备名和管理地址都相同才算自连接
         valid_links = [link for link in topology.links
-                      if link.src.device_name != link.dst.device_name]
+                      if not (link.src.device_name == link.dst.device_name and
+                             link.src.management_address == link.dst.management_address)]
 
         if len(valid_links) < len(topology.links):
             print(f"\n过滤了 {len(topology.links) - len(valid_links)} 条自连接")
@@ -156,24 +164,19 @@ def interactive_convert():
 
     # 询问编码格式
     print("\n编码格式选项:")
-    print("1. universal (推荐) - 同时生成UTF-8 BOM和GBK版本")
-    print("2. utf-8-bom - UTF-8 BOM格式")
-    print("3. gbk - GBK编码")
-    print("4. utf-8 - 标准UTF-8")
+    print("1. universal (推荐) - 同时生成UTF-8 BOM和GBK版本，确保Mac和Windows Excel兼容")
+    print("2. utf-8-bom - UTF-8 BOM格式，适合现代Excel")
+    print("3. gbk - GBK编码，适合传统中文Windows Excel")
+    print("4. utf-8 - 标准UTF-8，适合程序处理")
     encoding_choice = input("选择编码格式 (1-4, 默认: 1): ").strip()
     encoding_map = {"1": "universal", "2": "utf-8-bom", "3": "gbk", "4": "utf-8"}
     encoding = encoding_map.get(encoding_choice, "universal")
-
-    # 询问读取模式
-    structured_choice = input("使用结构化读取器? (y/N): ").strip().lower()
-    structured = structured_choice in ['y', 'yes']
 
     print(f"\n开始转换...")
     print(f"输入路径: {input_path}")
     print(f"输出路径: {output_path}")
     print(f"模板文件: {template_path}")
     print(f"编码格式: {encoding}")
-    print(f"结构化读取: {structured}")
     print("-" * 50)
 
     # 处理文件转换
@@ -181,7 +184,7 @@ def interactive_convert():
         # 单个文件转换
         if input_path.suffix.lower() == ".drawio":
             output_file = output_path / f"{input_path.stem}.csv"
-            _handle_drawio_to_csv(input_path, output_file, template_path, encoding, not structured)
+            _handle_drawio_to_csv(input_path, output_file, template_path, encoding, True)  # 默认使用通用读取器
         elif input_path.suffix.lower() == ".csv":
             output_file = output_path / f"{input_path.stem}.drawio"
             _handle_csv_to_drawio(input_path, output_file, template_path)
@@ -203,7 +206,7 @@ def interactive_convert():
         for drawio_file in drawio_files:
             output_file = output_path / f"{drawio_file.stem}.csv"
             try:
-                _handle_drawio_to_csv(drawio_file, output_file, template_path, encoding, not structured)
+                _handle_drawio_to_csv(drawio_file, output_file, template_path, encoding, True)  # 默认使用通用读取器
             except Exception as e:
                 print(f"转换 {drawio_file} 失败: {e}")
 
@@ -277,7 +280,6 @@ def main():
     convert_parser.add_argument('--encoding', default='universal',
                                choices=['universal', 'utf-8-bom', 'gbk', 'utf-8'],
                                help='输出编码格式')
-    convert_parser.add_argument('--structured', action='store_true', help='使用结构化读取器')
 
     args = parser.parse_args()
 

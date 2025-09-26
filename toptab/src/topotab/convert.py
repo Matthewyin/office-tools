@@ -82,8 +82,11 @@ def convert_drawio_to_csv(
             print(f"  {i}. {name}")
     
     # 过滤有效链路（非自连接）
-    valid_links = [link for link in topology.links 
-                  if link.src.device_name != link.dst.device_name]
+    # 自连接的判断：设备名和管理地址都相同才算自连接
+    # 如果管理地址不同，即使设备名相同也不算自连接（可能是同型号不同设备）
+    valid_links = [link for link in topology.links
+                  if not (link.src.device_name == link.dst.device_name and
+                         link.src.management_address == link.dst.management_address)]
     
     if verbose and len(valid_links) < len(topology.links):
         print(f"\n过滤了 {len(topology.links) - len(valid_links)} 条自连接")

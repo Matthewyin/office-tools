@@ -595,6 +595,166 @@ class DrawioTopologyReader:
         if root is None:
             raise ValueError("Invalid draw.io file: missing root element")
 
+        # 检查是否有data_*属性，如果有则使用结构化读取
+        has_data_attributes = any(
+            any(attr.startswith('data_') for attr in cell.attrib.keys())
+            for cell in root.findall("mxCell")
+        )
+
+        if has_data_attributes:
+            return self._read_structured_data(tree, root)
+        else:
+            return self._read_generic_fallback(root)
+
+    def _read_structured_data(self, tree: ET.ElementTree, root: ET.Element) -> Topology:
+        """读取包含data_*属性的结构化draw.io文件"""
+        topology = Topology()
+        devices: Dict[str, Device] = {}
+        device_cells: Dict[str, ET.Element] = {}
+
+        # 第一遍：识别设备
+        for cell in root.findall("mxCell"):
+            cell_id = cell.attrib.get("id", "")
+            data_type = cell.attrib.get("data_type", "")
+
+            # 跳过根节点和非设备元素
+            if cell_id in ["0", "1"] or data_type != "device":
+                continue
+
+            # 从data_*属性中提取设备信息
+            device_name = cell.attrib.get("data_device_name", "")
+            management_address = cell.attrib.get("data_management_address", "")
+            region = cell.attrib.get("data_region", "")
+            parent_region = cell.attrib.get("data_parent_region", "")
+            device_model = cell.attrib.get("data_device_model", "")
+            device_type = cell.attrib.get("data_device_type", "")
+            cabinet = cell.attrib.get("data_cabinet", "")
+            u_position = cell.attrib.get("data_u_position", "")
+
+            if device_name:
+                device = Device(
+                    device_name=device_name,
+                    management_address=management_address,
+                    region=region,
+                    parent_region=parent_region,
+                    device_model=device_model,
+                    device_type=device_type,
+                    cabinet=cabinet,
+                    u_position=u_position
+                )
+
+                device_key = f"{device_name}__{management_address}"  # 使用设备名+管理地址作为唯一键（与topology.device_key()一致）
+                devices[device_key] = device
+                device_cells[cell_id] = cell
+
+        # 第二遍：识别链路
+        links = []
+        for cell in root.findall("mxCell"):
+            data_type = cell.attrib.get("data_type", "")
+
+            if data_type != "link":
+                continue
+
+            # 从data_*属性中提取链路信息
+            src_device_name = cell.attrib.get("data_src_device_name", "")
+            src_management_address = cell.attrib.get("data_src_management_address", "")
+            dst_device_name = cell.attrib.get("data_dst_device_name", "")
+            dst_management_address = cell.attrib.get("data_dst_management_address", "")
+
+            src_device_key = f"{src_device_name}__{src_management_address}"
+            dst_device_key = f"{dst_device_name}__{dst_management_address}"
+
+            if src_device_key in devices and dst_device_key in devices:
+                # 创建源端点
+                src_endpoint = Endpoint(
+                    device_name=src_device_name,
+                    management_address=src_management_address,
+                    parent_region=cell.attrib.get("data_src_parent_region", ""),
+                    region=cell.attrib.get("data_src_region", ""),
+                    device_model=cell.attrib.get("data_src_device_model", ""),
+                    device_type=cell.attrib.get("data_src_device_type", ""),
+                    cabinet=cell.attrib.get("data_src_cabinet", ""),
+                    u_position=cell.attrib.get("data_src_u_position", ""),
+                    port_channel=cell.attrib.get("data_src_port_channel", ""),
+                    physical_interface=cell.attrib.get("data_src_physical_interface", ""),
+                    vrf=cell.attrib.get("data_src_vrf", ""),
+                    vlan=cell.attrib.get("data_src_vlan", ""),
+                    interface_ip=cell.attrib.get("data_src_interface_ip", "")
+                )
+
+                # 创建目标端点
+                dst_endpoint = Endpoint(
+                    device_name=dst_device_name,
+                    management_address=dst_management_address,
+                    parent_region=cell.attrib.get("data_dst_parent_region", ""),
+                    region=cell.attrib.get("data_dst_region", ""),
+                    device_model=cell.attrib.get("data_dst_device_model", ""),
+                    device_type=cell.attrib.get("data_dst_device_type", ""),
+                    cabinet=cell.attrib.get("data_dst_cabinet", ""),
+                    u_position=cell.attrib.get("data_dst_u_position", ""),
+                    port_channel=cell.attrib.get("data_dst_port_channel", ""),
+                    physical_interface=cell.attrib.get("data_dst_physical_interface", ""),
+                    vrf=cell.attrib.get("data_dst_vrf", ""),
+                    vlan=cell.attrib.get("data_dst_vlan", ""),
+                    interface_ip=cell.attrib.get("data_dst_interface_ip", "")
+                )
+
+                # 创建链路
+                link = Link(
+                    sequence=cell.attrib.get("data_sequence", ""),
+                    src=src_endpoint,
+                    dst=dst_endpoint,
+                    usage=cell.attrib.get("data_usage", ""),
+                    cable_type=cell.attrib.get("data_cable_type", ""),
+                    bandwidth=cell.attrib.get("data_bandwidth", ""),
+                    remark=cell.attrib.get("data_remark", "")
+                )
+                links.append(link)
+
+        # 添加设备到拓扑
+        for device in devices.values():
+            key = topology.device_key(device.device_name, device.management_address)
+            topology.devices[key] = device
+
+        # 添加链路到拓扑
+        topology.links.extend(links)
+
+        return topology
+
+    def _parse_device_info(self, html_value: str) -> tuple[str, str]:
+        """解析设备信息，从HTML格式的value中提取设备名和管理地址"""
+        import re
+
+        # 移除HTML标签，但保留换行
+        # 将<br/>转换为换行符
+        clean_value = html_value.replace('<br/>', '\n').replace('<br>', '\n')
+        # 移除其他HTML标签
+        clean_value = re.sub(r'<[^>]+>', '', clean_value)
+        # 清理HTML实体
+        clean_value = clean_value.replace('&nbsp;', ' ').strip()
+
+        lines = [line.strip() for line in clean_value.split('\n') if line.strip()]
+
+        if len(lines) >= 2:
+            device_name = lines[0]
+            management_address = lines[1]
+            return device_name, management_address
+        elif len(lines) == 1:
+            # 如果只有一行，尝试其他分隔符
+            line = lines[0]
+            if '@' in line:
+                parts = line.split('@', 1)
+                return parts[0].strip(), parts[1].strip()
+            elif '|' in line:
+                parts = line.split('|', 1)
+                return parts[0].strip(), parts[1].strip()
+            else:
+                return line, ""
+        else:
+            return "", ""
+
+    def _read_generic_fallback(self, root: ET.Element) -> Topology:
+        """读取标准draw.io文件的回退方法（原来的逻辑）"""
         topology = Topology()
         devices: Dict[str, Device] = {}
         device_cells: Dict[str, ET.Element] = {}
@@ -614,24 +774,22 @@ class DrawioTopologyReader:
                 ("rounded=1" in style or "whiteSpace=wrap" in style or "vertex" in cell.attrib) and
                 "swimlane" not in style):  # 排除区域
 
-                # 清理设备名称（移除HTML标签）
-                import re
-                clean_value = re.sub(r'<[^>]+>', '', value)
-                clean_value = clean_value.replace('&nbsp;', ' ').strip()
+                # 解析设备名和管理地址
+                device_name, management_address = self._parse_device_info(value)
 
-                if clean_value:
+                if device_name:
                     device = Device(
-                        device_name=clean_value,
-                        management_address="",  # 标准draw.io文件中没有这些信息
+                        device_name=device_name,
+                        management_address=management_address,
                         region="",
                         parent_region="",
-                        device_model=clean_value,  # 使用设备名作为型号
+                        device_model="",  # 标准draw.io文件中没有这些信息
                         device_type="网络设备",
                         cabinet="",
                         u_position=""
                     )
 
-                    device_key = clean_value
+                    device_key = device_name
                     devices[device_key] = device
                     device_cells[cell_id] = cell
 
@@ -651,20 +809,19 @@ class DrawioTopologyReader:
                 # 查找源设备
                 if source_id in device_cells:
                     source_cell = device_cells[source_id]
-                    import re
-                    source_device_name = re.sub(r'<[^>]+>', '', source_cell.attrib.get("value", "")).replace('&nbsp;', ' ').strip()
+                    source_device_name, _ = self._parse_device_info(source_cell.attrib.get("value", ""))
                     source_device = devices.get(source_device_name)
 
                 # 查找目标设备
                 if target_id in device_cells:
                     target_cell = device_cells[target_id]
-                    import re
-                    target_device_name = re.sub(r'<[^>]+>', '', target_cell.attrib.get("value", "")).replace('&nbsp;', ' ').strip()
+                    target_device_name, _ = self._parse_device_info(target_cell.attrib.get("value", ""))
                     target_device = devices.get(target_device_name)
 
                 if (source_device and target_device and
                     source_device_name != target_device_name):  # 过滤自连接
-                    # 创建链路
+
+                    # 创建源端点
                     src_endpoint = Endpoint(
                         device_name=source_device.device_name,
                         management_address=source_device.management_address,
@@ -681,6 +838,7 @@ class DrawioTopologyReader:
                         interface_ip=""
                     )
 
+                    # 创建目标端点
                     dst_endpoint = Endpoint(
                         device_name=target_device.device_name,
                         management_address=target_device.management_address,
@@ -697,8 +855,9 @@ class DrawioTopologyReader:
                         interface_ip=""
                     )
 
+                    # 创建链路
                     link = Link(
-                        sequence=len(links) + 1,
+                        sequence=str(len(links) + 1),
                         src=src_endpoint,
                         dst=dst_endpoint,
                         usage="连接",
@@ -709,9 +868,13 @@ class DrawioTopologyReader:
 
                     links.append(link)
 
-        # 构建拓扑
-        topology.devices = {device.device_name: device for device in devices.values()}
-        topology.links = links
+        # 添加设备到拓扑
+        for device in devices.values():
+            key = topology.device_key(device.device_name, device.management_address)
+            topology.devices[key] = device
+
+        # 添加链路到拓扑
+        topology.links.extend(links)
 
         return topology
 
