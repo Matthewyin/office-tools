@@ -11,9 +11,10 @@ from loguru import logger
 
 from .models import Device
 from .config import CSVConfig, DEFAULT_CSV_CONFIG
+from .config_manager import config_manager
 from .utils import (
-    validate_csv_file, detect_csv_format, parse_u_position, 
-    parse_device_height, standardize_device_purpose, 
+    validate_csv_file, parse_u_position,
+    parse_device_height, standardize_device_purpose,
     validate_device_data, safe_get_value,
     DataValidationError, FileFormatError
 )
@@ -92,8 +93,16 @@ class CSVProcessor:
         if df is None:
             raise DataValidationError("没有可用的数据进行格式检测")
         
-        self.format_type = detect_csv_format(df)
-        logger.info(f"检测到CSV格式: {self.format_type}")
+        # 使用配置管理器检测格式
+        format_id, match_score = config_manager.detect_format(list(df.columns))
+
+        if format_id is None:
+            logger.warning("无法识别CSV格式，请检查配置文件或列名")
+            self.format_type = "unknown"
+        else:
+            self.format_type = format_id
+            logger.info(f"检测到CSV格式: {self.format_type} (匹配度: {match_score:.2f})")
+
         return self.format_type
 
     def _is_empty_or_invalid_row(self, row: pd.Series, field_mapping: Dict[str, str]) -> Tuple[bool, str]:
@@ -151,21 +160,23 @@ class CSVProcessor:
             return errors
         
         # 获取字段映射
-        field_mapping = self.config.get_field_mapping(format_type)
+        field_mapping = config_manager.get_field_mapping(format_type)
         
         # 检查必需字段
         missing_fields = []
-        for required_field in self.config.必需字段:
+        required_internal_fields = config_manager.get_required_internal_fields()
+
+        for required_field in required_internal_fields:
             # 查找对应的原始字段名
             original_field = None
             for orig, mapped in field_mapping.items():
                 if mapped == required_field and orig in df.columns:
                     original_field = orig
                     break
-            
+
             if original_field is None:
                 missing_fields.append(required_field)
-        
+
         if missing_fields:
             errors.append(f"缺少必需字段: {', '.join(missing_fields)}")
         
@@ -218,7 +229,8 @@ class CSVProcessor:
                     device_data[mapped_field] = row[orig_field]
             
             # 添加默认值
-            for field, default_value in self.config.默认值.items():
+            default_values = config_manager.get_default_values()
+            for field, default_value in default_values.items():
                 if field not in device_data or pd.isna(device_data[field]):
                     device_data[field] = default_value
             
@@ -260,7 +272,7 @@ class CSVProcessor:
             raise DataValidationError(f"数据验证失败:\n{error_msg}")
         
         # 获取字段映射
-        field_mapping = self.config.get_field_mapping(self.format_type)
+        field_mapping = config_manager.get_field_mapping(self.format_type)
         
         devices = []
         skipped_count = 0
@@ -308,7 +320,8 @@ class CSVProcessor:
                     device_data[mapped_field] = str(value).strip()
         
         # 添加默认值
-        for field, default_value in self.config.默认值.items():
+        default_values = config_manager.get_default_values()
+        for field, default_value in default_values.items():
             if field not in device_data or not device_data[field]:
                 device_data[field] = default_value
         
@@ -331,18 +344,19 @@ class CSVProcessor:
             raise DataValidationError(f"数据转换失败: {e}")
         
         # 创建Device对象
+        default_values = config_manager.get_default_values()
         return Device(
             资产编号=safe_get_value(device_data, "资产编号", ""),
-            区域=safe_get_value(device_data, "区域", self.config.默认值["区域"]),
-            子区=safe_get_value(device_data, "子区", self.config.默认值["子区"]),
+            区域=safe_get_value(device_data, "区域", default_values.get("区域", "默认区域")),
+            子区=safe_get_value(device_data, "子区", default_values.get("子区", "默认子区")),
             设备用途=safe_get_value(device_data, "设备用途", "其他"),
             设备名=safe_get_value(device_data, "设备名", ""),
             型号=safe_get_value(device_data, "型号", ""),
             设备高度=device_data["设备高度"],
-            机房=safe_get_value(device_data, "机房", self.config.默认值["机房"]),
+            机房=safe_get_value(device_data, "机房", default_values.get("机房", "默认机房")),
             机柜=safe_get_value(device_data, "机柜", ""),
             U位=device_data["U位"],
-            厂商=safe_get_value(device_data, "厂商", self.config.默认值["厂商"])
+            厂商=safe_get_value(device_data, "厂商", default_values.get("厂商", "未知厂商"))
         )
     
     def process_file(self, file_path: str, encoding: Optional[str] = None) -> List[Device]:
