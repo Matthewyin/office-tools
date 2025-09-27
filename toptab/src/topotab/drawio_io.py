@@ -753,11 +753,339 @@ class DrawioTopologyReader:
         else:
             return "", ""
 
+    def _parse_device_info_enhanced(self, html_value: str) -> tuple[str, str, str]:
+        """
+        增强的设备信息解析，返回 (设备名, 管理地址, 设备型号)
+        支持多种格式：
+        1. <div><b>设备名</b><br/>管理地址</div>  (结构化格式)
+        2. <div>设备名</div>设备型号  (标准draw.io格式)
+        3. 设备名@管理地址  (简单格式)
+        4. 设备名|设备型号  (分隔符格式)
+        """
+        import re
+
+        if not html_value:
+            return "", "", ""
+
+        # 检测格式1: 结构化格式（包含<b>和<br/>）
+        if '<b>' in html_value and '<br/>' in html_value:
+            device_name, management_address = self._parse_device_info(html_value)
+            return device_name, management_address, ""
+
+        # 检测格式2: 标准draw.io格式（<div>设备名</div>设备型号 或 <div>设备名</div><div>设备型号</div>）
+        elif '<div>' in html_value and '</div>' in html_value:
+            # 解码HTML实体
+            decoded_value = html_value.replace('&lt;', '<').replace('&gt;', '>').replace('&nbsp;', ' ')
+
+            # 提取第一个div中的设备名
+            first_div_match = re.search(r'<div[^>]*>(.*?)</div>', decoded_value)
+            if first_div_match:
+                device_name_raw = first_div_match.group(1).strip()
+                # 清理设备名中的HTML标签
+                device_name = re.sub(r'<[^>]+>', '', device_name_raw).strip()
+
+                # 提取第一个div后的内容
+                remaining = decoded_value[first_div_match.end():].strip()
+
+                # 检查是否有第二个div（格式B: <div>设备名</div><div>设备型号</div>）
+                second_div_match = re.search(r'<div[^>]*>(.*?)</div>', remaining)
+                if second_div_match:
+                    # 格式B: 从第二个div中提取设备型号
+                    device_model_raw = second_div_match.group(1).strip()
+                    device_model = re.sub(r'<[^>]+>', '', device_model_raw).strip()
+                else:
+                    # 格式A: 直接使用剩余内容作为设备型号
+                    device_model = remaining if remaining else ""
+
+                return device_name, "", device_model
+            else:
+                # 如果div解析失败，回退到原始逻辑
+                device_name, management_address = self._parse_device_info(html_value)
+                return device_name, management_address, ""
+
+        # 检测格式3和4: 分隔符格式
+        else:
+            device_name, management_address = self._parse_device_info(html_value)
+            # 如果management_address看起来像设备型号，则调整
+            if management_address and self._looks_like_device_model(management_address):
+                return device_name, "", management_address
+            else:
+                return device_name, management_address, ""
+
+    def _looks_like_device_model(self, text: str) -> bool:
+        """判断文本是否看起来像设备型号"""
+        import re
+
+        if not text:
+            return False
+
+        # 设备型号通常包含：
+        # 1. 大写字母开头
+        # 2. 包含数字
+        # 3. 可能包含连字符
+        # 4. 长度适中（3-20字符）
+
+        if len(text) < 3 or len(text) > 20:
+            return False
+
+        # 检查是否以大写字母开头且包含数字
+        if re.match(r'^[A-Z].*\d', text):
+            return True
+
+        # 检查是否符合常见设备型号模式
+        model_patterns = [
+            r'^[A-Z]{2,4}\d+',  # 如 CE8865, USG6635
+            r'^[A-Z]\d+',       # 如 S5755
+            r'^[A-Z]{2,4}\d+\-', # 如 CE8865-4C
+        ]
+
+        for pattern in model_patterns:
+            if re.match(pattern, text):
+                return True
+
+        return False
+
+
+
+    def _detect_edge_direction(self, edge_cell) -> str:
+        """
+        检测边的方向
+        返回: "forward", "reverse", "bidirectional", "none"
+        """
+        import re
+
+        style = edge_cell.attrib.get("style", "")
+
+        # 检查是否有起始箭头（且不是none）
+        has_start_arrow = False
+        if "startArrow" in style:
+            start_arrow_match = re.search(r'startArrow=([^;]+)', style)
+            if start_arrow_match:
+                start_arrow_value = start_arrow_match.group(1)
+                has_start_arrow = start_arrow_value != "none"
+
+        # 检查是否有结束箭头（且不是none）
+        has_end_arrow = False
+        if "endArrow" in style:
+            end_arrow_match = re.search(r'endArrow=([^;]+)', style)
+            if end_arrow_match:
+                end_arrow_value = end_arrow_match.group(1)
+                has_end_arrow = end_arrow_value != "none"
+
+        # 判断方向
+        if has_end_arrow and not has_start_arrow:
+            return "forward"      # source → target
+        elif has_start_arrow and not has_end_arrow:
+            return "reverse"      # source ← target (需要交换)
+        elif has_start_arrow and has_end_arrow:
+            return "bidirectional"  # source ←→ target
+        else:
+            return "none"         # 无方向指示
+
+    def _adjust_endpoints_by_direction(self, direction: str, source_endpoint: Endpoint, target_endpoint: Endpoint) -> tuple[Endpoint, Endpoint]:
+        """
+        根据检测到的方向调整端点
+        """
+        if direction == "reverse":
+            # 箭头指向source，所以实际上target是源，source是目标
+            return target_endpoint, source_endpoint
+        else:
+            # forward, bidirectional, none 都保持原方向
+            return source_endpoint, target_endpoint
+
+    def _extract_region_hierarchy(self, root) -> dict:
+        """
+        提取区域层次结构
+        返回: {区域ID: {"name": 区域名, "parent": 父区域ID, "children": [子区域ID列表]}}
+        """
+        regions = {}
+
+        # 查找所有swimlane元素
+        for cell in root.iter("mxCell"):
+            style = cell.attrib.get("style", "")
+            if "swimlane" in style:
+                region_id = cell.attrib.get("id")
+                region_name = cell.attrib.get("value", "")
+                parent_id = cell.attrib.get("parent")
+
+                if region_id and region_name:
+                    regions[region_id] = {
+                        "name": region_name,
+                        "parent": parent_id,
+                        "children": []
+                    }
+
+        # 建立父子关系
+        for region_id, region_info in regions.items():
+            parent_id = region_info["parent"]
+            if parent_id and parent_id in regions:
+                regions[parent_id]["children"].append(region_id)
+
+        return regions
+
+    def _find_device_region(self, device_cell_id: str, regions: dict, root) -> tuple[str, str]:
+        """
+        查找设备所在的区域
+        返回: (所属区域名, 父区域名)
+        """
+        # 查找设备的parent链
+        current_id = device_cell_id
+        region_chain = []
+
+        # 向上遍历parent链，收集所有区域
+        for cell in root.iter("mxCell"):
+            if cell.attrib.get("id") == current_id:
+                parent_id = cell.attrib.get("parent")
+                while parent_id:
+                    if parent_id in regions:
+                        region_chain.append(parent_id)
+
+                    # 查找parent的parent
+                    parent_cell = None
+                    for c in root.iter("mxCell"):
+                        if c.attrib.get("id") == parent_id:
+                            parent_cell = c
+                            break
+
+                    if parent_cell:
+                        parent_id = parent_cell.attrib.get("parent")
+                    else:
+                        break
+                break
+
+        # 从区域链中提取所属区域和父区域
+        if len(region_chain) >= 2:
+            # 最近的区域是所属区域，上一级是父区域
+            region_name = regions[region_chain[0]]["name"]
+            parent_region_name = regions[region_chain[1]]["name"]
+            return region_name, parent_region_name
+        elif len(region_chain) == 1:
+            # 只有一级区域
+            region_name = regions[region_chain[0]]["name"]
+            return region_name, ""
+        else:
+            # 没有找到区域
+            return "", ""
+
+
+
+    def _parse_edge_labels(self, edge_cell) -> tuple[dict, dict]:
+        """解析边标签，提取源端口和目标端口信息"""
+        src_port_info = {}
+        dst_port_info = {}
+
+        # 查找边的所有子元素，寻找edgeLabel
+        for child in edge_cell:
+            if (child.tag == "mxCell" and
+                child.attrib.get("style", "").find("edgeLabel") != -1):
+
+                label_text = child.attrib.get("value", "")
+                if not label_text:
+                    continue
+
+                # 获取标签的几何位置信息
+                geometry = child.find("mxGeometry")
+                if geometry is not None:
+                    x_offset = float(geometry.attrib.get("x", "0"))
+
+                    # 根据位置判断是源标签还是目标标签
+                    # 负偏移通常是源标签，正偏移是目标标签
+                    if x_offset <= 0:  # 源标签（包括居中的情况）
+                        src_port_info = self._parse_port_info(label_text)
+                    else:  # 目标标签
+                        dst_port_info = self._parse_port_info(label_text)
+
+        return src_port_info, dst_port_info
+
+    def _parse_port_info(self, label_text: str) -> dict:
+        """解析端口信息文本，支持多种格式"""
+        import re
+
+        info = {}
+        if not label_text:
+            return info
+
+        # 移除HTML标签和实体
+        clean_text = re.sub(r'<[^>]+>', '', label_text)
+        clean_text = clean_text.replace('&nbsp;', ' ').replace('&lt;', '<').replace('&gt;', '>')
+        lines = [line.strip() for line in clean_text.split('\n') if line.strip()]
+
+        for line in lines:
+            line_lower = line.lower()
+
+            # 提取Port-Channel信息（支持多种写法）
+            if any(keyword in line_lower for keyword in ['port-channel', 'portchannel', 'pc号', '端口通道']):
+                value = self._extract_value(line)
+                if value:
+                    info['port_channel'] = value
+
+            # 提取物理接口信息（支持多种写法）
+            elif any(keyword in line_lower for keyword in ['物理接口', 'interface', '接口', 'port']):
+                # 排除IP接口的情况
+                if 'ip' not in line_lower:
+                    value = self._extract_value(line)
+                    if value:
+                        info['physical_interface'] = value
+
+            # 提取VRF信息
+            elif 'vrf' in line_lower:
+                value = self._extract_value(line)
+                if value:
+                    info['vrf'] = value
+
+            # 提取VLAN信息
+            elif 'vlan' in line_lower:
+                value = self._extract_value(line)
+                if value:
+                    info['vlan'] = value
+
+            # 提取IP地址信息（支持多种写法）
+            elif any(keyword in line_lower for keyword in ['ip', '地址']) and any(keyword in line_lower for keyword in ['接口', 'interface']):
+                value = self._extract_value(line)
+                if value and self._is_valid_ip_format(value):
+                    info['interface_ip'] = value
+
+        return info
+
+    def _is_valid_ip_format(self, value: str) -> bool:
+        """简单验证IP地址格式"""
+        import re
+        # 简单的IP格式检查，支持IPv4
+        ip_pattern = r'^(\d{1,3}\.){3}\d{1,3}$'
+        return bool(re.match(ip_pattern, value.strip()))
+
+    def _extract_value(self, line: str) -> str:
+        """从标签行中提取值，支持多种格式"""
+        if not line:
+            return ""
+
+        line = line.strip()
+
+        # 尝试多种分隔符
+        for separator in ['：', ':', '=', '-', '|']:
+            if separator in line:
+                parts = line.split(separator, 1)
+                if len(parts) == 2 and parts[1].strip():
+                    return parts[1].strip()
+
+        # 如果没有分隔符，尝试提取最后一个词（可能是值）
+        words = line.split()
+        if len(words) > 1:
+            # 检查最后一个词是否像是一个值（包含数字、点、字母等）
+            last_word = words[-1]
+            if any(c.isdigit() or c in './-_' for c in last_word):
+                return last_word
+
+        return ""
+
     def _read_generic_fallback(self, root: ET.Element) -> Topology:
         """读取标准draw.io文件的回退方法（原来的逻辑）"""
         topology = Topology()
         devices: Dict[str, Device] = {}
         device_cells: Dict[str, ET.Element] = {}
+
+        # 提取区域层次结构
+        regions = self._extract_region_hierarchy(root)
 
         # 第一遍：识别设备（矩形节点）
         for cell in root.findall("mxCell"):
@@ -774,22 +1102,27 @@ class DrawioTopologyReader:
                 ("rounded=1" in style or "whiteSpace=wrap" in style or "vertex" in cell.attrib) and
                 "swimlane" not in style):  # 排除区域
 
-                # 解析设备名和管理地址
-                device_name, management_address = self._parse_device_info(value)
+                # 使用增强的设备信息解析
+                device_name, management_address, device_model = self._parse_device_info_enhanced(value)
 
                 if device_name:
+                    # 提取设备所在的区域信息
+                    region, parent_region = self._find_device_region(cell_id, regions, root)
+
                     device = Device(
                         device_name=device_name,
                         management_address=management_address,
-                        region="",
-                        parent_region="",
-                        device_model="",  # 标准draw.io文件中没有这些信息
-                        device_type="网络设备",
+                        region=region,              # 从draw.io区域结构中提取
+                        parent_region=parent_region, # 从draw.io区域结构中提取
+                        device_model=device_model,  # 从draw.io中实际提取的设备型号
+                        device_type="",             # 不进行推断，留空
                         cabinet="",
                         u_position=""
                     )
 
-                    device_key = device_name
+                    # 使用与topology.device_key()一致的键格式
+                    # 处理管理地址为空的情况，保持与topology.device_key()方法一致
+                    device_key = f"{device_name}__{management_address}" if management_address else device_name
                     devices[device_key] = device
                     device_cells[cell_id] = cell
 
@@ -807,60 +1140,79 @@ class DrawioTopologyReader:
                 target_device_name = None
 
                 # 查找源设备
+                source_device_name = None
+                source_management_address = None
+                source_device = None
                 if source_id in device_cells:
                     source_cell = device_cells[source_id]
-                    source_device_name, _ = self._parse_device_info(source_cell.attrib.get("value", ""))
-                    source_device = devices.get(source_device_name)
+                    source_device_name, source_management_address, _ = self._parse_device_info_enhanced(source_cell.attrib.get("value", ""))
+                    # 使用与设备创建时一致的键格式
+                    source_device_key = f"{source_device_name}__{source_management_address}" if source_management_address else source_device_name
+                    source_device = devices.get(source_device_key)
 
                 # 查找目标设备
+                target_device_name = None
+                target_management_address = None
+                target_device = None
                 if target_id in device_cells:
                     target_cell = device_cells[target_id]
-                    target_device_name, _ = self._parse_device_info(target_cell.attrib.get("value", ""))
-                    target_device = devices.get(target_device_name)
+                    target_device_name, target_management_address, _ = self._parse_device_info_enhanced(target_cell.attrib.get("value", ""))
+                    # 使用与设备创建时一致的键格式
+                    target_device_key = f"{target_device_name}__{target_management_address}" if target_management_address else target_device_name
+                    target_device = devices.get(target_device_key)
 
-                if (source_device and target_device and
-                    source_device_name != target_device_name):  # 过滤自连接
+                if (source_device and target_device and source_device_name and target_device_name and
+                    not (source_device_name == target_device_name and
+                         source_management_address == target_management_address)):  # 精确的自连接过滤
 
-                    # 创建源端点
-                    src_endpoint = Endpoint(
-                        device_name=source_device.device_name,
-                        management_address=source_device.management_address,
-                        parent_region=source_device.parent_region,
-                        region=source_device.region,
-                        device_model=source_device.device_model,
-                        device_type=source_device.device_type,
-                        cabinet=source_device.cabinet,
-                        u_position=source_device.u_position,
-                        port_channel="",
-                        physical_interface="",
-                        vrf="",
-                        vlan="",
-                        interface_ip=""
+                    # 解析边标签获取端口信息
+                    src_port_info, dst_port_info = self._parse_edge_labels(cell)
+
+                    # 创建初始端点 - 使用解析出的设备名和管理地址，以及边标签中的端口信息
+                    initial_src_endpoint = Endpoint(
+                        device_name=source_device_name,
+                        management_address=source_management_address or "",
+                        parent_region=source_device.parent_region if source_device else "",
+                        region=source_device.region if source_device else "",
+                        device_model=source_device.device_model if source_device else "",
+                        device_type=source_device.device_type if source_device else "",  # 不推断，留空
+                        cabinet=source_device.cabinet if source_device else "",
+                        u_position=source_device.u_position if source_device else "",
+                        port_channel=src_port_info.get("port_channel", ""),
+                        physical_interface=src_port_info.get("physical_interface", ""),
+                        vrf=src_port_info.get("vrf", ""),
+                        vlan=src_port_info.get("vlan", ""),
+                        interface_ip=src_port_info.get("interface_ip", "")
                     )
 
-                    # 创建目标端点
-                    dst_endpoint = Endpoint(
-                        device_name=target_device.device_name,
-                        management_address=target_device.management_address,
-                        parent_region=target_device.parent_region,
-                        region=target_device.region,
-                        device_model=target_device.device_model,
-                        device_type=target_device.device_type,
-                        cabinet=target_device.cabinet,
-                        u_position=target_device.u_position,
-                        port_channel="",
-                        physical_interface="",
-                        vrf="",
-                        vlan="",
-                        interface_ip=""
+                    initial_dst_endpoint = Endpoint(
+                        device_name=target_device_name,
+                        management_address=target_management_address or "",
+                        parent_region=target_device.parent_region if target_device else "",
+                        region=target_device.region if target_device else "",
+                        device_model=target_device.device_model if target_device else "",
+                        device_type=target_device.device_type if target_device else "",  # 不推断，留空
+                        cabinet=target_device.cabinet if target_device else "",
+                        u_position=target_device.u_position if target_device else "",
+                        port_channel=dst_port_info.get("port_channel", ""),
+                        physical_interface=dst_port_info.get("physical_interface", ""),
+                        vrf=dst_port_info.get("vrf", ""),
+                        vlan=dst_port_info.get("vlan", ""),
+                        interface_ip=dst_port_info.get("interface_ip", "")
+                    )
+
+                    # 检测边的方向并调整端点顺序
+                    direction = self._detect_edge_direction(cell)
+                    src_endpoint, dst_endpoint = self._adjust_endpoints_by_direction(
+                        direction, initial_src_endpoint, initial_dst_endpoint
                     )
 
                     # 创建链路
                     link = Link(
-                        sequence=str(len(links) + 1),
+                        sequence="",  # 不自动生成序号，留空
                         src=src_endpoint,
                         dst=dst_endpoint,
-                        usage="连接",
+                        usage="",     # 不推断互联用途，留空
                         cable_type="",
                         bandwidth="",
                         remark=""
@@ -873,7 +1225,7 @@ class DrawioTopologyReader:
             key = topology.device_key(device.device_name, device.management_address)
             topology.devices[key] = device
 
-        # 添加链路到拓扑
+        # 添加链路到拓扑（不进行排序，保持原始顺序）
         topology.links.extend(links)
 
         return topology
