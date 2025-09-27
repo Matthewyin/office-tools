@@ -1,10 +1,10 @@
-# Topotab - 网络拓扑转换工具
+# Topotab - 网络拓扑双向转换工具
 
 [![Python](https://img.shields.io/badge/Python-3.10+-blue.svg)](https://www.python.org/downloads/)
 [![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 [![uv](https://img.shields.io/badge/uv-enabled-brightgreen.svg)](https://github.com/astral-sh/uv)
 
-一个专业的网络拓扑转换工具，基于**连接关系模型**将 draw.io 网络拓扑图转换为结构化的 CSV 文件，特别优化了中文字符支持和 Excel 兼容性。
+一个专业的网络拓扑双向转换工具，基于**连接关系模型**实现 draw.io 网络拓扑图与结构化 CSV 文件的无损互转，特别优化了中文字符支持和 Excel 兼容性。
 
 ## 🎯 核心理念
 
@@ -15,12 +15,16 @@
 
 ## ✨ 功能特性
 
-- � **连接关系模型**：直观的网络连接业务逻辑，易于理解和维护
-- � **标准兼容**：支持任何标准 draw.io 文件，无需特殊格式要求
-- 📊 **Excel 优化**：多种编码格式确保 Mac 和 Windows Excel 完美显示中文
+- 🔄 **双向转换**：支持 CSV ↔ draw.io 双向无损转换
+- 🧠 **智能识别**：自动检测文件类型，无需指定转换方向
+- 🌐 **通用格式**：支持任何符合约定的CSV格式，不限于特定文件
+- 📊 **多连接支持**：完整保持CSV中的多条连接关系，不合并不裁剪
+- 🎯 **连接关系模型**：直观的网络连接业务逻辑，易于理解和维护
+- 📋 **标准兼容**：支持任何标准 draw.io 文件，无需特殊格式要求
+- 💻 **Excel 优化**：多种编码格式确保 Mac 和 Windows Excel 完美显示中文
 - 🚀 **智能解析**：自动识别设备信息、区域层次和端口配置
 - ⚙️ **配置驱动**：JSON配置文件支持灵活的字段定义和解析规则
-- 🔧 **双接口**：提供现代化 CLI 和 Python API 两种使用方式
+- 🔧 **统一接口**：单一命令支持所有转换功能
 - ⚡ **现代工具**：基于 uv 包管理器，快速安装和运行
 
 ## 🚀 快速开始
@@ -39,14 +43,18 @@ uv sync
 ### 基本使用
 
 ```bash
-# 基本转换（推荐）- 自动使用默认输入输出目录
+# CSV转drawio（自动检测）
+uv run python -m topotab network.csv
+
+# drawio转CSV（自动检测）
 uv run python -m topotab network.drawio
 
 # 指定输出文件
+uv run python -m topotab network.csv -o topology.drawio
 uv run python -m topotab network.drawio -o topology.csv
 
 # 详细日志模式
-uv run python -m topotab network.drawio -v
+uv run python -m topotab network.csv -v
 
 # 查看帮助
 uv run python -m topotab --help
@@ -61,6 +69,12 @@ uv run python -m topotab --help
 ```bash
 uv run python -m topotab <输入文件> [选项]
 ```
+
+#### 转换方向自动检测
+
+- **CSV文件** (`.csv`) → 自动转换为 draw.io 文件
+- **draw.io文件** (`.drawio`) → 自动转换为 CSV 文件
+- **无需指定转换方向**，工具根据文件扩展名智能判断
 
 #### 命令选项
 
@@ -78,71 +92,98 @@ uv run python -m topotab <输入文件> [选项]
 #### 使用示例
 
 ```bash
-# 最简单用法 - 文件在input目录中
+# CSV转drawio - 最简单用法
+uv run python -m topotab network.csv
+
+# drawio转CSV - 最简单用法  
 uv run python -m topotab network.drawio
 
 # 指定完整路径
+uv run python -m topotab /path/to/network.csv
 uv run python -m topotab /path/to/network.drawio
 
-# 指定输出文件名（自动放在output目录）
-uv run python -m topotab network.drawio -o my_topology.csv
+# 指定输出文件名
+uv run python -m topotab network.csv -o my_topology.drawio
+uv run python -m topotab network.drawio -o my_connections.csv
 
 # 使用自定义配置
-uv run python -m topotab network.drawio -c custom_config.json
+uv run python -m topotab network.csv -c custom_config.json
 
-# 只生成UTF-8编码
+# 只生成UTF-8编码（仅对CSV输出有效）
 uv run python -m topotab network.drawio --single-encoding
-```
-
-### 传统CLI（兼容模式）
-
-```bash
-# 传统转换方式（仍然可用，但不推荐）
-uv run topotab convert input/network.drawio output/topology.csv --encoding universal
 ```
 
 ### Python API
 
 ```python
-from topotab.connection_main import convert_drawio_to_csv
+from topotab.connection_main import convert_drawio_to_csv, convert_csv_to_drawio
 
-# 基本转换
+# drawio转CSV
 convert_drawio_to_csv(
     input_file="input/network.drawio",
     output_file="output/topology.csv",
     multiple_encodings=True
 )
+
+# CSV转drawio
+convert_csv_to_drawio(
+    input_file="input/network.csv", 
+    output_file="output/topology.drawio"
+)
 ```
 
-## 📊 输出格式
+## 🔄 双向转换特性
 
-转换后的 CSV 文件采用连接关系模型，包含以下字段：
+### CSV → draw.io 转换
 
-### 基本信息
+- **通用格式支持**：自动检测CSV格式约定，支持多种命名风格
+- **智能字段映射**：自动识别源端、目标端、链路字段
+- **多连接保持**：每条CSV记录生成一条独立的连接线
+- **区域层级**：自动创建父区域和子区域的嵌套结构
+- **设备去重**：相同设备只创建一个节点，支持多条连接
 
-- **序号**：连接关系编号
+### draw.io → CSV 转换
 
-### 源端信息
+- **连接关系提取**：解析每条连接线为独立的连接关系
+- **设备信息收集**：提取设备名称、型号、区域等完整信息
+- **端口信息解析**：识别连接线标签中的端口配置
+- **多编码输出**：生成UTF-8和GBK两种编码格式
 
-- **源-父区域**、**源-所属区域**：设备所在的网络区域层次
-- **源-设备名**、**源-设备型号**、**源-设备类型**：设备基本信息
-- **源-管理地址**、**源-机柜**、**源-U位**：设备物理位置信息
-- **源-Port-Channel号**、**源-物理接口**：端口连接信息
-- **源-所属VRF**、**源-所属VLAN**、**源-接口IP**：网络配置信息
+### 数据一致性保证
 
-### 目标端信息
+- **往返转换**：CSV → drawio → CSV 保持数据完全一致
+- **无损转换**：不丢失任何连接关系和设备信息
+- **格式验证**：自动验证转换结果的完整性
 
-- 对应的完整目标端信息（字段结构与源端相同）
+## 📊 CSV格式约定
 
-### 链路属性
+### 通用格式检测
 
-- **互联用途**、**线缆类型**、**带宽**、**备注**：连接关系的扩展属性
+工具支持以下CSV格式约定：
+
+#### 列名模式
+- **源端前缀**：`源-`、`src-`、`source-`、`from-`
+- **目标端前缀**：`目标-`、`dst-`、`target-`、`to-`、`dest-`
+- **字段分类**：自动识别区域、设备、端口、链路字段
+
+#### 字段类型
+- **区域字段**：包含"区域"、"区"、"域"、"机房"等关键词
+- **设备字段**：包含"设备"、"主机"、"节点"等关键词  
+- **端口字段**：包含"接口"、"端口"、"VLAN"等关键词
+- **链路字段**：包含"用途"、"类型"、"带宽"、"备注"等关键词
+
+### 示例CSV格式
+
+```csv
+序号,源-父区域,源-所属区域,源-设备名,源-设备型号,源-物理接口,目标-父区域,目标-所属区域,目标-设备名,目标-设备型号,目标-物理接口,互联用途,线缆类型,带宽
+1,互联网区,核心区,intcsw01,CE8865-4C,GE1/0/1,互联网区,核心区,intcsw02,CE8865-4C,GE1/0/1,核心互联,光纤,10G
+```
 
 ## 🖥️ Excel 兼容性
 
-### 自动多编码支持
+### 自动多编码支持（仅CSV输出）
 
-默认情况下，工具会自动生成两种编码格式：
+默认情况下，drawio转CSV会自动生成两种编码格式：
 
 - **主文件**（如 `topology.csv`）：UTF-8 BOM 格式，适用于现代 Excel
 - **兼容文件**（如 `topology.gbk.csv`）：GBK 格式，适用于传统中文 Windows Excel
@@ -160,16 +201,17 @@ toptab/
 ├── config/                      # 配置文件
 │   └── connection_metadata.json # 连接关系元数据配置
 ├── src/topotab/                 # 主要源代码
-│   ├── connection_main.py       # 新的主程序入口
+│   ├── __main__.py             # 统一程序入口
+│   ├── connection_main.py       # 主程序逻辑
 │   ├── connection_parser.py     # 连接关系解析器
 │   ├── connection_csv.py        # 连接关系CSV处理器
 │   ├── connection_config.py     # 连接关系配置管理器
+│   ├── universal_format.py      # 通用格式检测器
+│   ├── universal_csv.py         # 通用CSV读取器
+│   ├── universal_drawio.py      # 通用drawio写入器
 │   ├── models.py               # 数据模型定义
-│   ├── cli.py                  # 传统命令行接口
-│   ├── convert.py              # 传统转换模块
 │   ├── drawio_io.py            # draw.io 文件处理
-│   ├── csv_io.py               # CSV 文件处理
-│   └── schema.py               # 数据模式定义
+│   └── csv_io.py               # CSV 文件处理
 ├── input/                       # 输入文件目录
 ├── output/                      # 输出文件目录
 ├── pyproject.toml              # 项目配置
@@ -180,68 +222,70 @@ toptab/
 
 ### 常见问题
 
-#### 1. Excel 显示乱码
+#### 1. 文件格式不支持
+
+**现象**：提示"不支持的文件格式"
+
+**解决方案**：
+- 确保文件扩展名为 `.csv` 或 `.drawio`
+- 检查文件是否损坏或为空
+- 使用 `-v` 选项查看详细错误信息
+
+#### 2. CSV格式检测失败
+
+**现象**：CSV转drawio时提示格式检测失败
+
+**解决方案**：
+- 检查CSV列名是否符合约定（包含源-、目标-等前缀）
+- 确保至少包含设备名称字段
+- 参考示例CSV格式调整列名
+
+#### 3. Excel 显示乱码
+
+**现象**：CSV文件在Excel中显示乱码
 
 **解决方案**：
 - 优先使用主文件（UTF-8 BOM 格式）
 - 如仍有乱码，使用 `.gbk.csv` 文件
 - 或使用 `--single-encoding` 选项生成标准格式
 
-#### 2. 设备信息解析不完整
-
-**可能原因**：
-- draw.io 文件中设备名称格式不标准
-- 缺少边标签信息
-
-**解决方案**：
-- 确保设备节点包含清晰的设备名和型号信息
-- 在连接线上添加端口信息标签
-- 检查区域命名的唯一性
-
-#### 3. 连接关系数量不符合预期
+#### 4. 连接关系数量不符合预期
 
 **检查步骤**：
-1. 确认 draw.io 文件中所有连接线都有明确的源和目标
-2. 检查是否有重复的连接线
+1. 确认输入文件中的连接数量
+2. 检查是否有格式不规范的记录
 3. 使用 `-v` 选项查看详细解析日志
+4. 验证往返转换的数据一致性
 
-#### 4. 配置文件相关问题
+#### 5. draw.io文件无法打开
 
-**自定义配置**：
-- 复制 `config/connection_metadata.json` 作为模板
-- 根据需要修改字段定义和解析规则
-- 使用 `-c` 选项指定自定义配置文件
+**解决方案**：
+- 确认生成的文件扩展名为 `.drawio`
+- 检查文件大小是否正常（不为空）
+- 尝试在 draw.io 网站或应用中打开
+- 查看生成日志是否有错误信息
 
-#### 5. uv 命令不可用
+## 🎯 最佳实践
 
-```bash
-# 安装 uv
-curl -LsSf https://astral.sh/uv/install.sh | sh
-# 或
-pip install uv
-```
+### CSV文件准备
 
-## 🎯 Draw.io 文件要求
+1. **列名规范**：使用清晰的前缀区分源端和目标端
+2. **数据完整**：确保关键字段（设备名、区域）不为空
+3. **编码统一**：建议使用UTF-8编码保存CSV文件
+4. **格式一致**：同类字段使用统一的命名风格
 
-为了获得最佳的转换效果，建议遵循以下规范：
+### draw.io文件要求
 
-### 设备节点
+1. **设备节点**：使用清晰的设备名称和型号标识
+2. **区域层次**：合理使用容器表示区域层级关系
+3. **连接线**：确保每条连接线都有明确的源和目标
+4. **标签信息**：在连接线上添加端口等详细信息
 
-- **命名格式**：`设备名<div>设备型号</div>` 或 `设备名\n设备型号`
-- **区域归属**：确保设备位于正确的区域容器中
-- **唯一性**：同一区域内设备名称应唯一
+### 性能优化
 
-### 区域层次
-
-- **父区域**：顶层区域容器（如"分机房"、"总局机房"）
-- **子区域**：具体功能区域（如"核心区"、"DMZ区"）
-- **命名唯一**：所有区域名称在全局范围内应唯一
-
-### 连接线
-
-- **标准连接**：使用 draw.io 的标准连接线
-- **端口标签**：可在连接线上添加端口信息标签
-- **避免重复**：同一对设备间避免绘制多条相同用途的连接线
+1. **文件大小**：大型网络建议分批处理
+2. **内存使用**：处理大文件时关注内存占用
+3. **验证结果**：重要数据建议进行往返转换验证
 
 ## 📄 许可证
 
