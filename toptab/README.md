@@ -6,6 +6,13 @@
 
 一个专业的网络拓扑转换工具，支持 draw.io 和 CSV 格式之间的双向转换，特别优化了中文字符支持和 Excel 兼容性。
 
+**对于drawio的要求：**
+- drawio文件中，确保在所有区域命名的唯一；
+- 节点将由设备名、设备型号、管理地址、机柜、起始U来描述
+- 边由源和目标的Port-Channel号	物理接口	所属VRF	所属VLAN	接口IP分成2个嵌入在边中的文本框来描述。
+
+
+
 ## ✨ 功能特性
 
 - 🔄 **双向转换**：支持 draw.io ↔ CSV 格式转换
@@ -144,6 +151,8 @@ toptab/
 - 检查 draw.io 文件中的设备名称是否清晰
 - 尝试使用 `--structured` 选项
 
+
+
 ### 4. uv 命令不可用
 ```bash
 # 安装 uv
@@ -152,25 +161,10 @@ curl -LsSf https://astral.sh/uv/install.sh | sh
 pip install uv
 ```
 
-## 🤝 贡献指南
-
-欢迎贡献代码！请遵循以下步骤：
-
-1. Fork 本项目
-2. 创建功能分支 (`git checkout -b feature/amazing-feature`)
-3. 提交更改 (`git commit -m 'Add amazing feature'`)
-4. 推送到分支 (`git push origin feature/amazing-feature`)
-5. 创建 Pull Request
 
 ## 📄 许可证
 
 本项目采用 MIT 许可证 - 查看 [LICENSE](LICENSE) 文件了解详情
-
-## 🙏 致谢
-
-- 感谢 [draw.io](https://www.diagrams.net/) 提供优秀的图表工具
-- 感谢 [uv](https://github.com/astral-sh/uv) 提供现代化的 Python 包管理
-- 感谢所有贡献者的支持
 
 ---
 
