@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Dict, List
+from typing import Dict, List, Any, Optional
 
 
 @dataclass(slots=True)
@@ -78,12 +78,62 @@ class Region:
 
 
 @dataclass(slots=True)
+class ConnectionRelationship:
+    """A single connection relationship between two network endpoints."""
+
+    # 源端信息
+    source_region: Dict[str, str] = field(default_factory=dict)  # parent_region, region
+    source_node: Dict[str, str] = field(default_factory=dict)    # device_name, device_model, etc.
+    source_port: Dict[str, str] = field(default_factory=dict)    # port_channel, physical_interface, etc.
+
+    # 目标端信息
+    target_region: Dict[str, str] = field(default_factory=dict)  # parent_region, region
+    target_node: Dict[str, str] = field(default_factory=dict)    # device_name, device_model, etc.
+    target_port: Dict[str, str] = field(default_factory=dict)    # port_channel, physical_interface, etc.
+
+    # 链路信息
+    link: Dict[str, str] = field(default_factory=dict)          # sequence, usage, cable_type, etc.
+
+    def to_csv_record(self, config: Dict[str, Any]) -> Dict[str, str]:
+        """根据配置文件生成CSV记录"""
+        record = {}
+
+        # 处理源端信息
+        for category in ['region', 'node', 'port']:
+            source_data = getattr(self, f'source_{category}')
+            if category in config['connection_metadata']['source']:
+                for field_name, field_config in config['connection_metadata']['source'][category].items():
+                    csv_column = field_config['csv_column']
+                    value = source_data.get(field_name, field_config.get('default', ''))
+                    record[csv_column] = value
+
+        # 处理目标端信息
+        for category in ['region', 'node', 'port']:
+            target_data = getattr(self, f'target_{category}')
+            if category in config['connection_metadata']['target']:
+                for field_name, field_config in config['connection_metadata']['target'][category].items():
+                    csv_column = field_config['csv_column']
+                    value = target_data.get(field_name, field_config.get('default', ''))
+                    record[csv_column] = value
+
+        # 处理链路信息
+        if 'link' in config['connection_metadata']:
+            for field_name, field_config in config['connection_metadata']['link'].items():
+                csv_column = field_config['csv_column']
+                value = self.link.get(field_name, field_config.get('default', ''))
+                record[csv_column] = value
+
+        return record
+
+
+@dataclass(slots=True)
 class Topology:
     """Unified in-memory representation of the entire topology."""
 
     regions: Dict[str, Region] = field(default_factory=dict)
     devices: Dict[str, Device] = field(default_factory=dict)
     links: List[Link] = field(default_factory=list)
+    connections: List[ConnectionRelationship] = field(default_factory=list)  # 新增连接关系列表
 
     def device_key(self, name: str, management_address: str) -> str:
         name = name.strip()

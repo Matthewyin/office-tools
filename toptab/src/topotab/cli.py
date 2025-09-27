@@ -1,6 +1,9 @@
 #!/usr/bin/env python3
 """
-Topotab CLI - 网络拓扑转换工具命令行接口
+Topotab CLI - 网络拓扑转换工具传统命令行接口
+
+注意：这是传统的CLI接口，主要用于向后兼容。
+推荐使用新的简化命令：uv run python -m topotab <文件名>
 """
 
 from __future__ import annotations

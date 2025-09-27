@@ -1,0 +1,312 @@
+{
+  "version": "1.0",
+  "description": "网络拓扑连接关系元数据配置文件",
+  "connection_metadata": {
+    "source": {
+      "region": {
+        "parent_region": {
+          "name": "父区域",
+          "csv_column": "源-父区域",
+          "required": false,
+          "default": "",
+          "description": "设备所在的父级区域"
+        },
+        "region": {
+          "name": "所属区域",
+          "csv_column": "源-所属区域",
+          "required": false,
+          "default": "",
+          "description": "设备所在的直接区域"
+        }
+      },
+      "node": {
+        "device_name": {
+          "name": "设备名",
+          "csv_column": "源-设备名",
+          "required": true,
+          "validation": {
+            "type": "string",
+            "min_length": 1
+          },
+          "description": "网络设备的名称标识"
+        },
+        "device_model": {
+          "name": "设备型号",
+          "csv_column": "源-设备型号",
+          "required": false,
+          "default": "",
+          "description": "设备的具体型号"
+        },
+        "device_type": {
+          "name": "设备类型",
+          "csv_column": "源-设备类型",
+          "required": false,
+          "default": "",
+          "description": "设备的分类类型"
+        },
+        "management_address": {
+          "name": "管理地址",
+          "csv_column": "源-管理地址",
+          "required": false,
+          "default": "",
+          "validation": {
+            "pattern": "^(?:[0-9]{1,3}\\.){3}[0-9]{1,3}$|^$"
+          },
+          "description": "设备的管理IP地址"
+        },
+        "cabinet": {
+          "name": "机柜",
+          "csv_column": "源-机柜",
+          "required": false,
+          "default": "",
+          "description": "设备所在的机柜编号"
+        },
+        "u_position": {
+          "name": "U位",
+          "csv_column": "源-U位",
+          "required": false,
+          "default": "",
+          "description": "设备在机柜中的U位位置"
+        }
+      },
+      "port": {
+        "port_channel": {
+          "name": "Port-Channel号",
+          "csv_column": "源-Port-Channel号",
+          "required": false,
+          "default": "",
+          "description": "端口聚合通道编号"
+        },
+        "physical_interface": {
+          "name": "物理接口",
+          "csv_column": "源-物理接口",
+          "required": false,
+          "default": "",
+          "description": "物理接口标识"
+        },
+        "vrf": {
+          "name": "所属VRF",
+          "csv_column": "源-所属VRF",
+          "required": false,
+          "default": "",
+          "description": "虚拟路由转发实例"
+        },
+        "vlan": {
+          "name": "所属VLAN",
+          "csv_column": "源-所属VLAN",
+          "required": false,
+          "default": "",
+          "description": "虚拟局域网标识"
+        },
+        "interface_ip": {
+          "name": "接口IP",
+          "csv_column": "源-接口IP",
+          "required": false,
+          "default": "",
+          "validation": {
+            "pattern": "^(?:[0-9]{1,3}\\.){3}[0-9]{1,3}(?:/[0-9]{1,2})?$|^$"
+          },
+          "description": "接口的IP地址"
+        }
+      }
+    },
+    "target": {
+      "region": {
+        "parent_region": {
+          "name": "父区域",
+          "csv_column": "目标-父区域",
+          "required": false,
+          "default": "",
+          "description": "设备所在的父级区域"
+        },
+        "region": {
+          "name": "所属区域",
+          "csv_column": "目标-所属区域",
+          "required": false,
+          "default": "",
+          "description": "设备所在的直接区域"
+        }
+      },
+      "node": {
+        "device_name": {
+          "name": "设备名",
+          "csv_column": "目标-设备名",
+          "required": true,
+          "validation": {
+            "type": "string",
+            "min_length": 1
+          },
+          "description": "网络设备的名称标识"
+        },
+        "device_model": {
+          "name": "设备型号",
+          "csv_column": "目标-设备型号",
+          "required": false,
+          "default": "",
+          "description": "设备的具体型号"
+        },
+        "device_type": {
+          "name": "设备类型",
+          "csv_column": "目标-设备类型",
+          "required": false,
+          "default": "",
+          "description": "设备的分类类型"
+        },
+        "management_address": {
+          "name": "管理地址",
+          "csv_column": "目标-管理地址",
+          "required": false,
+          "default": "",
+          "validation": {
+            "pattern": "^(?:[0-9]{1,3}\\.){3}[0-9]{1,3}$|^$"
+          },
+          "description": "设备的管理IP地址"
+        },
+        "cabinet": {
+          "name": "机柜",
+          "csv_column": "目标-机柜",
+          "required": false,
+          "default": "",
+          "description": "设备所在的机柜编号"
+        },
+        "u_position": {
+          "name": "U位",
+          "csv_column": "目标-U位",
+          "required": false,
+          "default": "",
+          "description": "设备在机柜中的U位位置"
+        }
+      },
+      "port": {
+        "port_channel": {
+          "name": "Port-Channel号",
+          "csv_column": "目标-Port-Channel号",
+          "required": false,
+          "default": "",
+          "description": "端口聚合通道编号"
+        },
+        "physical_interface": {
+          "name": "物理接口",
+          "csv_column": "目标-物理接口",
+          "required": false,
+          "default": "",
+          "description": "物理接口标识"
+        },
+        "vrf": {
+          "name": "所属VRF",
+          "csv_column": "目标-所属VRF",
+          "required": false,
+          "default": "",
+          "description": "虚拟路由转发实例"
+        },
+        "vlan": {
+          "name": "所属VLAN",
+          "csv_column": "目标-所属VLAN",
+          "required": false,
+          "default": "",
+          "description": "虚拟局域网标识"
+        },
+        "interface_ip": {
+          "name": "接口IP",
+          "csv_column": "目标-接口IP",
+          "required": false,
+          "default": "",
+          "validation": {
+            "pattern": "^(?:[0-9]{1,3}\\.){3}[0-9]{1,3}(?:/[0-9]{1,2})?$|^$"
+          },
+          "description": "接口的IP地址"
+        }
+      }
+    },
+    "link": {
+      "sequence": {
+        "name": "序号",
+        "csv_column": "序号",
+        "required": false,
+        "default": "",
+        "description": "连接记录的序号"
+      },
+      "usage": {
+        "name": "互联用途",
+        "csv_column": "互联用途",
+        "required": false,
+        "default": "",
+        "description": "连接的业务用途"
+      },
+      "cable_type": {
+        "name": "线缆类型",
+        "csv_column": "线缆类型",
+        "required": false,
+        "default": "",
+        "description": "物理连接线缆的类型"
+      },
+      "bandwidth": {
+        "name": "带宽",
+        "csv_column": "带宽",
+        "required": false,
+        "default": "",
+        "description": "连接的带宽规格"
+      },
+      "remarks": {
+        "name": "备注",
+        "csv_column": "备注",
+        "required": false,
+        "default": "",
+        "description": "其他备注信息"
+      }
+    }
+  },
+  "parsing_rules": {
+    "node_formats": [
+      {
+        "name": "设备名_div_设备型号",
+        "pattern": "^([^<]+)<div>([^<]+)</div>$",
+        "fields": ["device_name", "device_model"],
+        "priority": 1,
+        "description": "设备名在上，型号在下的格式"
+      },
+      {
+        "name": "设备名_换行_设备型号",
+        "pattern": "^([^\\n]+)\\n([^\\n]+)$",
+        "fields": ["device_name", "device_model"],
+        "priority": 2,
+        "description": "设备名和型号用换行分隔"
+      },
+      {
+        "name": "纯设备名",
+        "pattern": "^([^<\\n]+)$",
+        "fields": ["device_name"],
+        "priority": 3,
+        "description": "只有设备名的简单格式"
+      }
+    ],
+    "port_keywords": {
+      "port_channel": ["port-channel", "portchannel", "pc号", "端口通道"],
+      "physical_interface": ["物理接口", "interface", "接口", "端口"],
+      "vrf": ["vrf", "路由实例"],
+      "vlan": ["vlan", "虚拟局域网"],
+      "interface_ip": ["ip", "地址", "接口ip"]
+    },
+    "region_detection": {
+      "parent_keywords": ["机房", "数据中心", "园区"],
+      "region_keywords": ["区", "域", "网段", "子网"]
+    }
+  },
+  "csv_output": {
+    "column_order": [
+      "序号",
+      "源-父区域", "源-所属区域", "源-设备名", "源-设备型号", "源-设备类型",
+      "源-管理地址", "源-机柜", "源-U位",
+      "源-Port-Channel号", "源-物理接口", "源-所属VRF", "源-所属VLAN", "源-接口IP",
+      "互联用途", "线缆类型", "带宽", "备注",
+      "目标-接口IP", "目标-所属VLAN", "目标-所属VRF", "目标-物理接口", "目标-Port-Channel号",
+      "目标-U位", "目标-机柜", "目标-设备类型", "目标-设备型号", "目标-设备名",
+      "目标-所属区域", "目标-父区域", "目标-管理地址"
+    ],
+    "encoding_options": {
+      "utf8_bom": "UTF-8 BOM格式，适合现代Excel",
+      "gbk": "GBK编码，适合传统中文Windows Excel",
+      "universal": "同时生成UTF-8 BOM和GBK版本"
+    }
+  }
+}
