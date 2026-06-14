@@ -34,6 +34,60 @@ export async function insertText(host, text) {
   }
 }
 
+export async function countWordMatches(searchText) {
+  // eslint-disable-next-line no-undef
+  return Word.run(async (context) => {
+    const results = context.document.body.search(searchText, {
+      matchCase: false,
+      matchWholeWord: false,
+    });
+    results.load('items');
+    await context.sync();
+    return results.items.length;
+  });
+}
+
+export async function replaceWordMatches(searchText, replacementText) {
+  // eslint-disable-next-line no-undef
+  return Word.run(async (context) => {
+    const results = context.document.body.search(searchText, {
+      matchCase: false,
+      matchWholeWord: false,
+    });
+    results.load('items');
+    await context.sync();
+
+    for (const item of results.items) {
+      // 只替换搜索命中的正文范围，不处理页眉页脚和批注。
+      // eslint-disable-next-line no-undef
+      item.insertText(replacementText, Word.InsertLocation.replace);
+    }
+
+    await context.sync();
+    return results.items.length;
+  });
+}
+
+export async function createExcelAnalysisSheet(analysisText) {
+  // eslint-disable-next-line no-undef
+  return Excel.run(async (context) => {
+    const worksheets = context.workbook.worksheets;
+    worksheets.load('items/name');
+    await context.sync();
+
+    const usedNames = new Set(worksheets.items.map(sheet => sheet.name));
+    const sheetName = nextSheetName(usedNames, 'AI 分析');
+    const sheet = worksheets.add(sheetName);
+    const rows = analysisTextToRows(analysisText);
+    const range = sheet.getRangeByIndexes(0, 0, rows.length, 1);
+    range.values = rows;
+    range.format.autofitColumns();
+    sheet.activate();
+    await context.sync();
+    return sheetName;
+  });
+}
+
 // ==================== Word ====================
 
 async function readWordSelection() {
@@ -89,6 +143,26 @@ async function insertExcelText(text) {
     targetRange.values = cellValues;
     await context.sync();
   });
+}
+
+function nextSheetName(usedNames, baseName) {
+  if (!usedNames.has(baseName)) return baseName;
+  for (let i = 2; i < 100; i += 1) {
+    const name = `${baseName} ${i}`;
+    if (!usedNames.has(name)) return name;
+  }
+  return `${baseName} ${Date.now()}`;
+}
+
+function analysisTextToRows(text) {
+  const lines = text.split('\n').map(line => line.trim()).filter(Boolean);
+  const bodyRows = lines.length ? lines.map(line => [line]) : [['无分析结果']];
+  return [
+    ['AI 分析报告'],
+    [`生成时间：${new Date().toLocaleString('zh-CN')}`],
+    [''],
+    ...bodyRows,
+  ];
 }
 
 // ==================== PowerPoint ====================

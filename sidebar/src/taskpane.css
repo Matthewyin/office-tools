@@ -293,6 +293,29 @@ body {
   color: var(--accent);
 }
 
+/* ==================== 执行前确认 ==================== */
+.action-preview {
+  background: var(--bg-surface);
+  border: 1px solid rgba(0, 122, 255, 0.18);
+  border-radius: var(--radius-md);
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  box-shadow: 0 1px 0 rgba(0, 0, 0, 0.03);
+}
+
+.action-preview.hidden {
+  display: none;
+}
+
+.preview-text {
+  color: var(--text-primary);
+  font-size: 13px;
+  line-height: 1.55;
+  white-space: pre-wrap;
+}
+
 /* ==================== 输出区域 ==================== */
 .output-section {
   flex: 1;

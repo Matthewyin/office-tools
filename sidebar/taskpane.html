@@ -41,6 +41,17 @@
       <path d="M12 16V8"/>
       <path d="M16 16v-3"/>
     </symbol>
+    <symbol id="icon-table-plus" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="3" y="4" width="13" height="13" rx="2"/>
+      <path d="M3 9h13"/>
+      <path d="M8 4v13"/>
+      <path d="M19 11v6"/>
+      <path d="M16 14h6"/>
+    </symbol>
+    <symbol id="icon-preview" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M3 12s3.5-6 9-6 9 6 9 6-3.5 6-9 6-9-6-9-6Z"/>
+      <circle cx="12" cy="12" r="2.5"/>
+    </symbol>
     <symbol id="icon-formula" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
       <path d="M5 5h14"/>
       <path d="M5 19h14"/>
@@ -127,6 +138,7 @@
           <button class="pill host-word" data-action="summarize" title="总结选中文字"><svg class="icon"><use href="#icon-list"></use></svg><span>总结</span></button>
           <!-- Excel 快捷操作 -->
           <button class="pill host-excel" data-action="analyze-data" title="分析选中单元格数据"><svg class="icon"><use href="#icon-chart"></use></svg><span>分析数据</span></button>
+          <button class="pill host-excel" data-action="analyze-to-sheet" title="分析选区并写入新的工作表"><svg class="icon"><use href="#icon-table-plus"></use></svg><span>新表分析</span></button>
           <button class="pill host-excel" data-action="gen-formula" title="根据描述生成 Excel 公式"><svg class="icon"><use href="#icon-formula"></use></svg><span>生成公式</span></button>
           <button class="pill host-excel" data-action="explain-formula" title="解释选中单元格中的公式"><svg class="icon"><use href="#icon-help"></use></svg><span>解释公式</span></button>
           <!-- PPT 快捷操作 -->
@@ -145,7 +157,20 @@
 
         <div class="btn-row">
           <button id="btn-read-selection" class="btn btn-secondary" title="读取当前选中的内容到提示词" data-icon="icon-paperclip"><svg class="icon"><use href="#icon-paperclip"></use></svg><span>读取选中</span></button>
+          <button id="btn-preview-action" class="btn btn-secondary" title="预览可执行的文档操作" data-icon="icon-preview"><svg class="icon"><use href="#icon-preview"></use></svg><span>预览操作</span></button>
           <button id="btn-send" class="btn btn-primary" data-icon="icon-send"><svg class="icon"><use href="#icon-send"></use></svg><span>发送</span></button>
+        </div>
+      </section>
+
+      <!-- 执行前确认 -->
+      <section id="action-preview" class="action-preview hidden" aria-label="执行前确认">
+        <div>
+          <span class="section-title">待执行操作</span>
+          <p id="action-preview-text" class="preview-text"></p>
+        </div>
+        <div class="btn-row">
+          <button id="btn-cancel-action" class="btn btn-secondary btn-sm">取消</button>
+          <button id="btn-confirm-action" class="btn btn-primary btn-sm">确认执行</button>
         </div>
       </section>
 

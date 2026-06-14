@@ -1,10 +1,18 @@
 import { streamLLM } from './llm.js';
-import { getSelectedText, insertText } from './office-actions.js';
+import {
+  getSelectedText,
+  insertText,
+  countWordMatches,
+  replaceWordMatches,
+  createExcelAnalysisSheet,
+} from './office-actions.js';
 
 // 当前宿主类型（Word / Excel / PowerPoint）
 let currentHost = null;
 // 最近一次 AI 回复的完整文本（供"插入文档"使用）
 let lastReplyText = '';
+// 等待用户确认的文档操作
+let pendingAction = null;
 
 // ==================== 初始化 ====================
 
@@ -33,6 +41,9 @@ function initUI() {
 
   // 读取选中内容
   document.getElementById('btn-read-selection').addEventListener('click', readSelectionToPrompt);
+  document.getElementById('btn-preview-action').addEventListener('click', previewDocumentAction);
+  document.getElementById('btn-confirm-action').addEventListener('click', confirmPendingAction);
+  document.getElementById('btn-cancel-action').addEventListener('click', clearPendingAction);
 
   // 发送
   document.getElementById('btn-send').addEventListener('click', handleSend);
@@ -147,6 +158,11 @@ const QUICK_ACTION_PROMPTS = {
 };
 
 async function handleQuickAction(action) {
+  if (action === 'analyze-to-sheet') {
+    await previewExcelAnalysisToSheet();
+    return;
+  }
+
   const config = QUICK_ACTION_PROMPTS[action];
   if (!config) return;
 
@@ -191,6 +207,157 @@ async function handleSend() {
     return;
   }
   await sendToLLM(systemPrompt, userPrompt);
+}
+
+async function previewDocumentAction() {
+  if (currentHost !== 'Word') {
+    showToast('当前仅支持 Word 查找替换预览');
+    return;
+  }
+
+  const commandText = document.getElementById('input-user-prompt').value.trim();
+  const parsed = parseReplaceCommand(commandText);
+  if (!parsed) {
+    showToast('请输入类似：找到文档中的“XX”，替换为“YY”');
+    return;
+  }
+
+  const btn = document.getElementById('btn-preview-action');
+  btn.disabled = true;
+  setButtonLabel(btn, '预览中...');
+  try {
+    const count = await countWordMatches(parsed.searchText);
+    pendingAction = {
+      type: 'word-replace',
+      searchText: parsed.searchText,
+      replacementText: parsed.replacementText,
+      count,
+    };
+
+    const confirmBtn = document.getElementById('btn-confirm-action');
+    confirmBtn.disabled = count === 0;
+    showActionPreview([
+      'Word 查找替换',
+      `查找内容：${parsed.searchText}`,
+      `替换为：${parsed.replacementText || '（空文本）'}`,
+      `预计影响：${count} 处正文匹配`,
+    ].join('\n'));
+  } catch (err) {
+    showToast(`预览失败: ${err.message}`);
+  } finally {
+    btn.disabled = false;
+    setButtonLabel(btn, '预览操作');
+  }
+}
+
+async function previewExcelAnalysisToSheet() {
+  if (currentHost !== 'Excel') {
+    showToast('当前仅支持 Excel 新表分析');
+    return;
+  }
+
+  let selectionText = '';
+  try {
+    selectionText = await getSelectedText(currentHost);
+  } catch (err) {
+    showToast(`读取选区失败: ${err.message}`);
+    return;
+  }
+
+  if (!selectionText.trim()) {
+    showToast('请先选中要分析的单元格区域');
+    return;
+  }
+
+  pendingAction = {
+    type: 'excel-analysis-to-sheet',
+    selectionText,
+  };
+  document.getElementById('btn-confirm-action').disabled = false;
+  showActionPreview([
+    'Excel 新建分析工作表',
+    '将读取当前选区，生成简洁分析报告。',
+    '确认后会创建新的工作表“AI 分析”，原工作表不会被修改。',
+  ].join('\n'));
+}
+
+async function confirmPendingAction() {
+  if (!pendingAction) {
+    showToast('没有待执行操作');
+    return;
+  }
+
+  const action = pendingAction;
+  const confirmBtn = document.getElementById('btn-confirm-action');
+  const cancelBtn = document.getElementById('btn-cancel-action');
+  confirmBtn.disabled = true;
+  cancelBtn.disabled = true;
+  setButtonLabel(confirmBtn, action.type === 'excel-analysis-to-sheet' ? '生成中...' : '执行中...');
+
+  try {
+    if (action.type === 'word-replace') {
+      const replacedCount = await replaceWordMatches(action.searchText, action.replacementText);
+      setOutputText([
+        '已完成 Word 查找替换。',
+        '',
+        `查找内容：${action.searchText}`,
+        `替换为：${action.replacementText || '（空文本）'}`,
+        `实际替换：${replacedCount} 处`,
+      ].join('\n'), { allowInsert: false, allowCopy: true });
+      showToast('替换完成');
+      clearPendingAction();
+      return;
+    }
+
+    if (action.type === 'excel-analysis-to-sheet') {
+      const analysisText = await generateExcelAnalysis(action.selectionText);
+      const sheetName = await createExcelAnalysisSheet(analysisText);
+      setOutputText(`${analysisText}\n\n已写入工作表：${sheetName}`, {
+        allowInsert: false,
+        allowCopy: true,
+      });
+      showToast(`已创建工作表：${sheetName}`);
+      clearPendingAction();
+    }
+  } catch (err) {
+    setOutputText(`错误: ${err.message}`, { allowInsert: false, allowCopy: true });
+    showToast(`执行失败: ${err.message}`);
+  } finally {
+    confirmBtn.disabled = false;
+    cancelBtn.disabled = false;
+    setButtonLabel(confirmBtn, '确认执行');
+  }
+}
+
+async function generateExcelAnalysis(selectionText) {
+  const outputArea = document.getElementById('output-area');
+  outputArea.innerHTML = '<span class="cursor-blink">▋</span>';
+  lastReplyText = '';
+  document.getElementById('btn-insert').disabled = true;
+  document.getElementById('btn-copy').disabled = true;
+
+  const systemPrompt = '你是专业的数据分析助手。请基于用户选中的 Excel 数据输出简洁、可落地的中文分析报告。';
+  const userPrompt = [
+    '请分析以下 Excel 选区数据。',
+    '要求：',
+    '1. 先给核心结论。',
+    '2. 再列出关键发现和异常点。',
+    '3. 最后给出下一步建议。',
+    '',
+    selectionText,
+  ].join('\n');
+
+  const fullText = await streamLLM(systemPrompt, userPrompt, (chunk) => {
+    lastReplyText += chunk;
+    outputArea.innerHTML =
+      escapeHtml(lastReplyText).replace(/\n/g, '<br>') +
+      '<span class="cursor-blink">▋</span>';
+    outputArea.scrollTop = outputArea.scrollHeight;
+  });
+
+  const result = fullText || lastReplyText;
+  outputArea.innerHTML = escapeHtml(result).replace(/\n/g, '<br>');
+  return result;
 }
 
 async function sendToLLM(systemPrompt, userPrompt) {
@@ -267,6 +434,53 @@ function clearOutput() {
 }
 
 // ==================== 工具函数 ====================
+
+function parseReplaceCommand(input) {
+  const text = input.trim();
+  const patterns = [
+    /^(?:请)?(?:找到|查找)(?:文档中|正文中)?(?:的)?\s*(?:“([^”]+)”|"([^"]+)"|'([^']+)'|(.+?))(?:内容)?\s*[，,；; ]*(?:并)?(?:全部)?(?:替换为|改成|更改为|修改为)\s*(?:“([^”]*)”|"([^"]*)"|'([^']*)'|(.+?))\s*[。.!！]?$/,
+    /^(?:请)?(?:把|将)\s*(?:“([^”]+)”|"([^"]+)"|'([^']+)'|(.+?))\s*(?:全部)?(?:替换为|改成|更改为|修改为)\s*(?:“([^”]*)”|"([^"]*)"|'([^']*)'|(.+?))\s*[。.!！]?$/,
+  ];
+
+  for (const pattern of patterns) {
+    const match = text.match(pattern);
+    if (!match) continue;
+
+    const searchText = normalizeCommandPart(match.slice(1, 5).find(value => value !== undefined));
+    const replacementText = normalizeCommandPart(match.slice(5, 9).find(value => value !== undefined) || '');
+    if (!searchText) return null;
+    return { searchText, replacementText };
+  }
+
+  return null;
+}
+
+function normalizeCommandPart(value) {
+  return String(value || '').trim().replace(/[。.!！]$/, '').trim();
+}
+
+function showActionPreview(text) {
+  const panel = document.getElementById('action-preview');
+  document.getElementById('action-preview-text').textContent = text;
+  panel.classList.remove('hidden');
+}
+
+function clearPendingAction() {
+  pendingAction = null;
+  document.getElementById('action-preview').classList.add('hidden');
+  document.getElementById('action-preview-text').textContent = '';
+  const confirmBtn = document.getElementById('btn-confirm-action');
+  confirmBtn.disabled = false;
+  setButtonLabel(confirmBtn, '确认执行');
+}
+
+function setOutputText(text, options = {}) {
+  const { allowInsert = false, allowCopy = false } = options;
+  lastReplyText = text;
+  document.getElementById('output-area').innerHTML = escapeHtml(text).replace(/\n/g, '<br>');
+  document.getElementById('btn-insert').disabled = !allowInsert;
+  document.getElementById('btn-copy').disabled = !allowCopy;
+}
 
 function escapeHtml(text) {
   return text
