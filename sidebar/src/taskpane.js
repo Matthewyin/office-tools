@@ -1,6 +1,7 @@
 import { streamChat, testLLMConfig } from './llm.js';
 import {
   getSelectedText,
+  insertText,
   countWordMatches,
   replaceWordMatches,
   createExcelAnalysisSheet,
@@ -422,6 +423,11 @@ async function previewActionFromPrompt(commandText, fromChat) {
       await previewWordReplace(parsed, fromChat);
       return true;
     }
+
+    if (isWordInsertCommand(commandText)) {
+      await generateAndInsertWordContent(commandText);
+      return true;
+    }
   }
 
   if (currentHost === 'Excel' && isExcelAnalysisSheetCommand(commandText)) {
@@ -430,6 +436,40 @@ async function previewActionFromPrompt(commandText, fromChat) {
   }
 
   return false;
+}
+
+async function generateAndInsertWordContent(commandText) {
+  const assistantMessage = addMessage('assistant', '', { pending: true });
+  const systemPrompt = [
+    '你是专业的 Word 文档写作助手。',
+    '用户要求你写入文档时，只输出可直接插入文档的正文。',
+    '不要输出“好的”“以下是”“我可以”等解释性话术。',
+  ].join('\n');
+  const userPrompt = `请根据以下指令生成正文内容：\n\n${commandText}`;
+
+  try {
+    const fullText = await streamChat([
+      { role: 'system', content: systemPrompt },
+      { role: 'user', content: userPrompt },
+    ], (chunk) => {
+      assistantMessage.content += chunk;
+      renderChatMessages();
+    }, getSelectedModelConfig());
+
+    assistantMessage.content = fullText || assistantMessage.content;
+    assistantMessage.pending = false;
+    renderChatMessages();
+
+    await insertText(currentHost, assistantMessage.content);
+    addMessage('assistant', '已写入 Word 文档。');
+    showToast('已写入文档');
+  } catch (err) {
+    assistantMessage.content = `写入失败: ${err.message}`;
+    assistantMessage.pending = false;
+    assistantMessage.error = true;
+    renderChatMessages();
+    showToast(`写入失败: ${err.message}`);
+  }
 }
 
 async function previewWordReplace(parsed, fromChat) {
@@ -581,6 +621,10 @@ function clearPendingAction() {
 
 function isExcelAnalysisSheetCommand(input) {
   return /分析/.test(input) && /(新建|创建|生成|写入).*(sheet|工作表|表页|表)/i.test(input);
+}
+
+function isWordInsertCommand(input) {
+  return /(在|往|向)?文档(中|里)?/.test(input) && /(写|写入|插入|生成|创建|起草|撰写)/.test(input);
 }
 
 function parseReplaceCommand(input) {
