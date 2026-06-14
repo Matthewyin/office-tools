@@ -28,6 +28,7 @@ function initUI() {
   document.getElementById('btn-add-model').addEventListener('click', addModelProfile);
   document.getElementById('btn-save-settings').addEventListener('click', saveSettings);
   document.getElementById('select-model').addEventListener('change', handleModelSelect);
+  document.getElementById('select-thinking').addEventListener('change', handleReasoningSelect);
 
   document.getElementById('btn-read-selection').addEventListener('click', readSelectionToPrompt);
   document.getElementById('btn-preview-action').addEventListener('click', previewDocumentAction);
@@ -65,6 +66,8 @@ function loadModelProfiles() {
     baseUrl: localStorage.getItem('llm_base_url') || '',
     apiKey: localStorage.getItem('llm_api_key') || '',
     model: localStorage.getItem('llm_model') || '',
+    reasoningEnabled: false,
+    reasoningEffort: 'medium',
   }];
 }
 
@@ -119,6 +122,8 @@ function addModelProfile() {
     baseUrl: '',
     apiKey: '',
     model: '',
+    reasoningEnabled: false,
+    reasoningEffort: 'medium',
   };
   modelProfiles.push(profile);
   selectedModelId = profile.id;
@@ -135,6 +140,8 @@ function removeModelProfile(id) {
       baseUrl: '',
       apiKey: '',
       model: '',
+      reasoningEnabled: false,
+      reasoningEffort: 'medium',
     });
   }
   if (!modelProfiles.some(profile => profile.id === selectedModelId)) {
@@ -161,6 +168,17 @@ function renderModelConfigList() {
       <input class="input" data-field="baseUrl" type="text" placeholder="API Base URL" value="${escapeHtml(profile.baseUrl || '')}" />
       <input class="input" data-field="apiKey" type="password" placeholder="API Key" value="${escapeHtml(profile.apiKey || '')}" />
       <input class="input" data-field="model" type="text" placeholder="Model Name" value="${escapeHtml(profile.model || '')}" />
+      <div class="model-option-row">
+        <label class="checkbox-row">
+          <input data-field="reasoningEnabled" type="checkbox" ${profile.reasoningEnabled ? 'checked' : ''} />
+          <span>启用推理/思考</span>
+        </label>
+        <select class="compact-select" data-field="reasoningEffort" aria-label="默认思考深度">
+          <option value="low" ${profile.reasoningEffort === 'low' ? 'selected' : ''}>低</option>
+          <option value="medium" ${!profile.reasoningEffort || profile.reasoningEffort === 'medium' ? 'selected' : ''}>中</option>
+          <option value="high" ${profile.reasoningEffort === 'high' ? 'selected' : ''}>高</option>
+        </select>
+      </div>
     `;
     list.appendChild(item);
   });
@@ -182,6 +200,7 @@ function renderModelSelect() {
   });
 
   select.value = selectedModelId || modelProfiles[0]?.id || '';
+  renderReasoningSelect();
 }
 
 function readProfilesFromForm() {
@@ -191,6 +210,8 @@ function readProfilesFromForm() {
     baseUrl: item.querySelector('[data-field="baseUrl"]').value.trim(),
     apiKey: item.querySelector('[data-field="apiKey"]').value.trim(),
     model: item.querySelector('[data-field="model"]').value.trim(),
+    reasoningEnabled: item.querySelector('[data-field="reasoningEnabled"]').checked,
+    reasoningEffort: item.querySelector('[data-field="reasoningEffort"]').value,
   }));
 }
 
@@ -200,6 +221,29 @@ function handleModelSelect(event) {
   localStorage.setItem('llm_selected_profile', selectedModelId);
   localStorage.setItem('llm_profiles_v1', JSON.stringify(modelProfiles));
   syncLegacyConfig();
+  renderReasoningSelect();
+}
+
+function handleReasoningSelect(event) {
+  modelProfiles = readProfilesFromForm();
+  const selectedProfile = modelProfiles.find(profile => profile.id === selectedModelId) || modelProfiles[0];
+  if (!selectedProfile) return;
+
+  selectedProfile.reasoningEnabled = event.target.value !== 'off';
+  selectedProfile.reasoningEffort = event.target.value === 'off' ? 'medium' : event.target.value;
+  localStorage.setItem('llm_profiles_v1', JSON.stringify(modelProfiles));
+  renderModelConfigList();
+  renderModelSelect();
+}
+
+function renderReasoningSelect() {
+  const select = document.getElementById('select-thinking');
+  const profile = getSelectedModelConfig();
+  if (!profile?.reasoningEnabled) {
+    select.value = 'off';
+    return;
+  }
+  select.value = profile.reasoningEffort || 'medium';
 }
 
 function getSelectedModelConfig() {

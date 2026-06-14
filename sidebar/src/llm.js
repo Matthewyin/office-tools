@@ -4,6 +4,8 @@ function getConfig(config = {}) {
     baseUrl: config.baseUrl || localStorage.getItem('llm_base_url') || 'https://api.openai.com/v1',
     apiKey: config.apiKey || localStorage.getItem('llm_api_key') || '',
     model: config.model || localStorage.getItem('llm_model') || 'gpt-4o-mini',
+    reasoningEnabled: Boolean(config.reasoningEnabled),
+    reasoningEffort: config.reasoningEffort || 'medium',
   };
 }
 
@@ -22,10 +24,20 @@ export async function streamLLM(systemPrompt, userPrompt, onChunk, config) {
 }
 
 export async function streamChat(messages, onChunk, config) {
-  const { baseUrl, apiKey, model } = getConfig(config);
+  const { baseUrl, apiKey, model, reasoningEnabled, reasoningEffort } = getConfig(config);
 
   if (!apiKey) {
     throw new Error('请先在设置中填写 API Key。');
+  }
+
+  const body = {
+    model,
+    stream: true,
+    messages,
+  };
+
+  if (reasoningEnabled) {
+    body.reasoning_effort = reasoningEffort;
   }
 
   const response = await fetch(`${baseUrl}/chat/completions`, {
@@ -34,11 +46,7 @@ export async function streamChat(messages, onChunk, config) {
       'Content-Type': 'application/json',
       'Authorization': `Bearer ${apiKey}`,
     },
-    body: JSON.stringify({
-      model,
-      stream: true,
-      messages,
-    }),
+    body: JSON.stringify(body),
   });
 
   if (!response.ok) {
