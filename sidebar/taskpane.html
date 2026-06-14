@@ -111,14 +111,14 @@
     <!-- 设置面板（默认折叠） -->
     <section id="settings-panel" class="settings-panel hidden" aria-label="API 设置">
       <div class="settings-body">
-        <label class="field-label" for="input-base-url">API Base URL</label>
-        <input id="input-base-url" type="text" class="input" placeholder="https://api.openai.com/v1" />
+        <label class="field-label" for="input-system-prompt">系统提示词</label>
+        <textarea id="input-system-prompt" class="textarea" rows="3" placeholder="例如：你是一个专业的文档润色助手，请用简洁准确的中文回答。"></textarea>
 
-        <label class="field-label" for="input-api-key">API Key</label>
-        <input id="input-api-key" type="password" class="input" placeholder="sk-..." />
-
-        <label class="field-label" for="input-model">Model Name</label>
-        <input id="input-model" type="text" class="input" placeholder="gpt-4o-mini" />
+        <div class="settings-row">
+          <span class="field-label">LLM 配置</span>
+          <button id="btn-add-model" class="btn btn-secondary btn-sm" type="button">添加模型</button>
+        </div>
+        <div id="model-config-list" class="model-config-list"></div>
 
         <button id="btn-save-settings" class="btn btn-primary">保存配置</button>
         <p id="settings-status" class="status-text"></p>
@@ -126,40 +126,9 @@
     </section>
 
     <!-- 主交互区 -->
-    <main class="main">
-
-      <!-- 快捷操作按钮（根据宿主动态显示） -->
-      <section class="quick-actions" aria-label="快捷操作">
-        <p class="section-title">快捷操作</p>
-        <div id="quick-actions-container" class="pill-group">
-          <!-- Word 快捷操作 -->
-          <button class="pill host-word" data-action="polish" title="润色选中的文字"><svg class="icon"><use href="#icon-edit"></use></svg><span>润色</span></button>
-          <button class="pill host-word" data-action="translate-en" title="将选中文字翻译成英文"><svg class="icon"><use href="#icon-language"></use></svg><span>译英文</span></button>
-          <button class="pill host-word" data-action="summarize" title="总结选中文字"><svg class="icon"><use href="#icon-list"></use></svg><span>总结</span></button>
-          <!-- Excel 快捷操作 -->
-          <button class="pill host-excel" data-action="analyze-data" title="分析选中单元格数据"><svg class="icon"><use href="#icon-chart"></use></svg><span>分析数据</span></button>
-          <button class="pill host-excel" data-action="analyze-to-sheet" title="分析选区并写入新的工作表"><svg class="icon"><use href="#icon-table-plus"></use></svg><span>新表分析</span></button>
-          <button class="pill host-excel" data-action="gen-formula" title="根据描述生成 Excel 公式"><svg class="icon"><use href="#icon-formula"></use></svg><span>生成公式</span></button>
-          <button class="pill host-excel" data-action="explain-formula" title="解释选中单元格中的公式"><svg class="icon"><use href="#icon-help"></use></svg><span>解释公式</span></button>
-          <!-- PPT 快捷操作 -->
-          <button class="pill host-ppt" data-action="gen-outline" title="根据当前幻灯片内容生成大纲"><svg class="icon"><use href="#icon-layout"></use></svg><span>生成大纲</span></button>
-          <button class="pill host-ppt" data-action="expand-content" title="扩写选中文字为完整幻灯片内容"><svg class="icon"><use href="#icon-expand"></use></svg><span>扩写内容</span></button>
-        </div>
-      </section>
-
-      <!-- 自定义 Prompt 输入 -->
-      <section class="prompt-section" aria-label="自定义提问">
-        <label class="field-label" for="input-system-prompt">系统提示词（可选）</label>
-        <textarea id="input-system-prompt" class="textarea" rows="2" placeholder="例如：你是一个专业的文档润色助手，请用简洁准确的中文回答。"></textarea>
-
-        <label class="field-label" for="input-user-prompt">你的问题</label>
-        <textarea id="input-user-prompt" class="textarea" rows="3" placeholder="输入指令，或先选中文档内容再点击快捷操作..."></textarea>
-
-        <div class="btn-row">
-          <button id="btn-read-selection" class="btn btn-secondary" title="读取当前选中的内容到提示词" data-icon="icon-paperclip"><svg class="icon"><use href="#icon-paperclip"></use></svg><span>读取选中</span></button>
-          <button id="btn-preview-action" class="btn btn-secondary" title="预览可执行的文档操作" data-icon="icon-preview"><svg class="icon"><use href="#icon-preview"></use></svg><span>预览操作</span></button>
-          <button id="btn-send" class="btn btn-primary" data-icon="icon-send"><svg class="icon"><use href="#icon-send"></use></svg><span>发送</span></button>
-        </div>
+    <main class="chat-shell">
+      <section id="chat-window" class="chat-window" aria-label="聊天窗口">
+        <div id="chat-messages" class="chat-messages"></div>
       </section>
 
       <!-- 执行前确认 -->
@@ -174,21 +143,25 @@
         </div>
       </section>
 
-      <!-- 输出区域 -->
-      <section class="output-section" aria-label="AI 回复">
-        <div class="output-header">
-          <span class="section-title">回复</span>
-          <div class="output-actions">
-            <button id="btn-insert" class="btn btn-secondary btn-sm" title="将回复插入到当前光标处" data-icon="icon-insert" disabled><svg class="icon"><use href="#icon-insert"></use></svg><span>插入</span></button>
-            <button id="btn-copy" class="btn btn-secondary btn-sm" title="复制回复内容" data-icon="icon-copy" disabled><svg class="icon"><use href="#icon-copy"></use></svg><span>复制</span></button>
-            <button id="btn-clear" class="btn btn-ghost btn-sm" title="清空回复" aria-label="清空回复"><svg class="icon"><use href="#icon-close"></use></svg></button>
+      <section class="composer" aria-label="聊天输入栏">
+        <textarea id="input-user-prompt" class="composer-input" rows="3" placeholder="输入问题，或输入“找到文档中的XX，替换为YY”..."></textarea>
+        <div class="composer-toolbar">
+          <div class="composer-tools">
+            <button id="btn-read-selection" class="icon-tool" title="读取当前选中内容" aria-label="读取当前选中内容">
+              <svg class="icon"><use href="#icon-paperclip"></use></svg>
+            </button>
+            <button id="btn-preview-action" class="icon-tool" title="预览可执行操作" aria-label="预览可执行操作">
+              <svg class="icon"><use href="#icon-preview"></use></svg>
+            </button>
+          </div>
+          <div class="composer-model">
+            <select id="select-model" class="model-select" aria-label="选择 LLM"></select>
+            <button id="btn-send" class="send-btn" title="发送" aria-label="发送">
+              <svg class="icon"><use href="#icon-send"></use></svg>
+            </button>
           </div>
         </div>
-        <div id="output-area" class="output-area">
-          <p class="output-placeholder">回复将在这里显示...</p>
-        </div>
       </section>
-
     </main>
 
   </div>

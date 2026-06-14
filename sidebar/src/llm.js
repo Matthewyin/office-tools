@@ -1,9 +1,9 @@
-// 从 localStorage 读取用户配置
-function getConfig() {
+// 从 localStorage 读取用户配置，调用方也可以传入当前选择的模型配置。
+function getConfig(config = {}) {
   return {
-    baseUrl: localStorage.getItem('llm_base_url') || 'https://api.openai.com/v1',
-    apiKey: localStorage.getItem('llm_api_key') || '',
-    model: localStorage.getItem('llm_model') || 'gpt-4o-mini',
+    baseUrl: config.baseUrl || localStorage.getItem('llm_base_url') || 'https://api.openai.com/v1',
+    apiKey: config.apiKey || localStorage.getItem('llm_api_key') || '',
+    model: config.model || localStorage.getItem('llm_model') || 'gpt-4o-mini',
   };
 }
 
@@ -14,8 +14,15 @@ function getConfig() {
  * @param {(chunk: string) => void} onChunk - 每收到一个 token 调用一次
  * @returns {Promise<string>} 完整的回复文本
  */
-export async function streamLLM(systemPrompt, userPrompt, onChunk) {
-  const { baseUrl, apiKey, model } = getConfig();
+export async function streamLLM(systemPrompt, userPrompt, onChunk, config) {
+  return streamChat([
+    ...(systemPrompt ? [{ role: 'system', content: systemPrompt }] : []),
+    { role: 'user', content: userPrompt },
+  ], onChunk, config);
+}
+
+export async function streamChat(messages, onChunk, config) {
+  const { baseUrl, apiKey, model } = getConfig(config);
 
   if (!apiKey) {
     throw new Error('请先在设置中填写 API Key。');
@@ -30,10 +37,7 @@ export async function streamLLM(systemPrompt, userPrompt, onChunk) {
     body: JSON.stringify({
       model,
       stream: true,
-      messages: [
-        ...(systemPrompt ? [{ role: 'system', content: systemPrompt }] : []),
-        { role: 'user', content: userPrompt },
-      ],
+      messages,
     }),
   });
 

@@ -2,7 +2,7 @@
 :root {
   --bg-base: #f5f5f7;
   --bg-surface: #ffffff;
-  --bg-elevated: #f9fafb;
+  --bg-elevated: #fbfbfd;
   --bg-hover: #f2f3f5;
 
   --text-primary: #1d1d1f;
@@ -17,18 +17,17 @@
 
   --border: rgba(0, 0, 0, 0.12);
   --border-soft: rgba(0, 0, 0, 0.08);
-  --border-focus: rgba(0, 122, 255, 0.45);
+  --border-focus: rgba(0, 122, 255, 0.42);
 
   --radius-sm: 8px;
   --radius-md: 12px;
-  --radius-lg: 16px;
+  --radius-lg: 18px;
 
   --font: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', sans-serif;
   --transition: 140ms ease;
-  --shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
+  --shadow: 0 12px 34px rgba(0, 0, 0, 0.08);
 }
 
-/* ==================== 基础重置 ==================== */
 *, *::before, *::after {
   box-sizing: border-box;
   margin: 0;
@@ -68,8 +67,8 @@ body {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 12px 14px 10px;
-  background: rgba(255, 255, 255, 0.92);
+  padding: 10px 12px 8px;
+  background: rgba(255, 255, 255, 0.9);
   border-bottom: 1px solid var(--border-soft);
   flex-shrink: 0;
   backdrop-filter: blur(16px);
@@ -82,18 +81,24 @@ body {
   letter-spacing: 0;
 }
 
-.icon-btn {
+.icon-btn,
+.icon-tool,
+.send-btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  border: 1px solid transparent;
+  cursor: pointer;
+  font-family: var(--font);
+  transition: background var(--transition), border-color var(--transition), color var(--transition), opacity var(--transition);
+}
+
+.icon-btn {
   width: 30px;
   height: 30px;
   background: transparent;
-  border: 1px solid transparent;
   border-radius: 50%;
   color: var(--text-secondary);
-  cursor: pointer;
-  transition: background var(--transition), border-color var(--transition), color var(--transition);
 }
 
 .icon-btn:hover {
@@ -108,7 +113,7 @@ body {
   flex-shrink: 0;
   overflow: hidden;
   transition: max-height 0.24s ease, opacity 0.2s ease;
-  max-height: 420px;
+  max-height: 78vh;
   opacity: 1;
 }
 
@@ -119,80 +124,99 @@ body {
 }
 
 .settings-body {
-  padding: 14px;
+  padding: 12px;
   display: flex;
   flex-direction: column;
+  gap: 9px;
+  max-height: 78vh;
+  overflow-y: auto;
+}
+
+.settings-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
   gap: 8px;
 }
 
-/* ==================== 主体区域 ==================== */
-.main {
-  flex: 1;
-  overflow-y: auto;
-  padding: 14px;
+.model-config-list {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 10px;
 }
 
-.main::-webkit-scrollbar,
-.output-area::-webkit-scrollbar {
-  width: 8px;
+.model-config {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 7px;
+  padding: 10px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-md);
 }
 
-.main::-webkit-scrollbar-thumb,
-.output-area::-webkit-scrollbar-thumb {
-  background: rgba(0, 0, 0, 0.18);
-  border: 2px solid transparent;
-  border-radius: 999px;
-  background-clip: padding-box;
+.model-config-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
 }
 
-/* ==================== 字段标签 ==================== */
-.section-title {
-  display: block;
-  font-size: 11px;
-  font-weight: 650;
-  color: var(--text-muted);
-  margin-bottom: 7px;
-}
-
-.field-label {
+.model-config-title {
   font-size: 12px;
-  font-weight: 560;
+  font-weight: 650;
   color: var(--text-secondary);
-  display: block;
 }
 
-/* ==================== 表单输入 ==================== */
-.input, .textarea {
+/* ==================== 表单与按钮 ==================== */
+.section-title,
+.field-label {
+  display: block;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.section-title {
+  color: var(--text-muted);
+  margin-bottom: 6px;
+}
+
+.input,
+.textarea,
+.composer-input,
+.model-select {
   width: 100%;
   background: var(--bg-surface);
   border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
   color: var(--text-primary);
   font-family: var(--font);
   font-size: 13px;
-  padding: 9px 10px;
-  transition: border-color var(--transition), box-shadow var(--transition), background var(--transition);
   outline: none;
+  transition: border-color var(--transition), box-shadow var(--transition), background var(--transition);
+}
+
+.input,
+.textarea {
+  border-radius: var(--radius-sm);
+  padding: 9px 10px;
   resize: none;
 }
 
-.textarea {
-  min-height: 54px;
-}
-
-.input::placeholder, .textarea::placeholder {
+.input::placeholder,
+.textarea::placeholder,
+.composer-input::placeholder {
   color: #a1a1a6;
 }
 
-.input:focus, .textarea:focus {
+.input:focus,
+.textarea:focus,
+.composer-input:focus,
+.model-select:focus {
   border-color: var(--border-focus);
   box-shadow: 0 0 0 3px rgba(0, 122, 255, 0.14);
 }
 
-/* ==================== 按钮 ==================== */
 .btn {
   display: inline-flex;
   align-items: center;
@@ -210,7 +234,9 @@ body {
   white-space: nowrap;
 }
 
-.btn:disabled {
+.btn:disabled,
+.icon-tool:disabled,
+.send-btn:disabled {
   opacity: 0.45;
   cursor: not-allowed;
 }
@@ -234,17 +260,14 @@ body {
   background: var(--bg-hover);
 }
 
-.btn-ghost {
-  width: 30px;
-  min-height: 30px;
-  padding: 0;
+.btn-danger {
   background: transparent;
-  color: var(--text-muted);
+  color: var(--error);
+  border-color: transparent;
 }
 
-.btn-ghost:hover:not(:disabled) {
-  background: var(--bg-hover);
-  color: var(--text-primary);
+.btn-danger:hover:not(:disabled) {
+  background: rgba(215, 0, 21, 0.08);
 }
 
 .btn-sm {
@@ -259,42 +282,93 @@ body {
   justify-content: flex-end;
 }
 
-/* ==================== 快捷操作 ==================== */
-.quick-actions {
-  flex-shrink: 0;
-}
-
-.pill-group {
+/* ==================== 聊天主体 ==================== */
+.chat-shell {
+  flex: 1;
+  min-height: 0;
   display: flex;
-  flex-wrap: wrap;
-  gap: 7px;
+  flex-direction: column;
+  background: var(--bg-base);
 }
 
-.pill {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  min-height: 30px;
-  background: var(--bg-surface);
-  border: 1px solid var(--border);
+.chat-window {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 14px 12px 10px;
+}
+
+.chat-window::-webkit-scrollbar,
+.settings-body::-webkit-scrollbar {
+  width: 8px;
+}
+
+.chat-window::-webkit-scrollbar-thumb,
+.settings-body::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.18);
+  border: 2px solid transparent;
   border-radius: 999px;
-  color: var(--text-secondary);
-  cursor: pointer;
-  font-family: var(--font);
-  font-size: 12px;
-  font-weight: 560;
-  padding: 5px 10px;
-  transition: background var(--transition), color var(--transition), border-color var(--transition);
+  background-clip: padding-box;
 }
 
-.pill:hover {
-  background: var(--accent-soft);
-  border-color: rgba(0, 122, 255, 0.2);
-  color: var(--accent);
+.chat-messages {
+  min-height: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.empty-state {
+  margin: auto 0;
+  color: var(--text-muted);
+  text-align: center;
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.message {
+  display: flex;
+}
+
+.message-user {
+  justify-content: flex-end;
+}
+
+.message-assistant {
+  justify-content: flex-start;
+}
+
+.message-bubble {
+  max-width: 88%;
+  border-radius: 16px;
+  padding: 10px 12px;
+  font-size: 13px;
+  line-height: 1.62;
+  white-space: pre-wrap;
+  word-break: break-word;
+  box-shadow: 0 1px 0 rgba(0, 0, 0, 0.03);
+}
+
+.message-user .message-bubble {
+  background: var(--accent);
+  color: #fff;
+  border-bottom-right-radius: 6px;
+}
+
+.message-assistant .message-bubble {
+  background: var(--bg-surface);
+  color: var(--text-primary);
+  border: 1px solid var(--border-soft);
+  border-bottom-left-radius: 6px;
+}
+
+.message-error .message-bubble {
+  color: var(--error);
 }
 
 /* ==================== 执行前确认 ==================== */
 .action-preview {
+  margin: 0 12px 10px;
   background: var(--bg-surface);
   border: 1px solid rgba(0, 122, 255, 0.18);
   border-radius: var(--radius-md);
@@ -316,47 +390,88 @@ body {
   white-space: pre-wrap;
 }
 
-/* ==================== 输出区域 ==================== */
-.output-section {
-  flex: 1;
-  min-height: 140px;
+/* ==================== 输入栏 ==================== */
+.composer {
+  flex-shrink: 0;
+  margin: 0 8px 8px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow);
+  overflow: hidden;
 }
 
-.output-header {
+.composer-input {
+  display: block;
+  min-height: 82px;
+  max-height: 170px;
+  border: 0;
+  border-radius: 0;
+  padding: 12px 13px 8px;
+  resize: none;
+  line-height: 1.55;
+}
+
+.composer-input:focus {
+  box-shadow: none;
+}
+
+.composer-toolbar {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 10px;
-  margin-bottom: 7px;
+  gap: 8px;
+  padding: 7px 8px 8px;
 }
 
-.output-actions {
+.composer-tools,
+.composer-model {
   display: flex;
-  gap: 6px;
+  align-items: center;
+  gap: 7px;
+  min-width: 0;
 }
 
-.output-area {
-  background: var(--bg-surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-md);
-  padding: 12px;
-  min-height: 120px;
-  max-height: 360px;
-  overflow-y: auto;
-  font-size: 13px;
-  line-height: 1.65;
+.icon-tool {
+  width: 30px;
+  height: 30px;
+  background: transparent;
+  border-radius: 50%;
+  color: var(--text-secondary);
+}
+
+.icon-tool:hover:not(:disabled) {
+  background: var(--bg-hover);
   color: var(--text-primary);
-  word-break: break-word;
-  white-space: pre-wrap;
-  box-shadow: 0 1px 0 rgba(0, 0, 0, 0.03);
 }
 
-.output-placeholder {
-  color: var(--text-muted);
+.model-select {
+  width: auto;
+  max-width: 128px;
+  min-width: 84px;
+  height: 30px;
+  border-color: transparent;
+  border-radius: 999px;
+  color: var(--text-secondary);
+  padding: 0 8px;
+  appearance: none;
+  text-overflow: ellipsis;
 }
 
-.error-text {
-  color: var(--error);
+.model-select:hover {
+  background: var(--bg-hover);
+}
+
+.send-btn {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: var(--accent);
+  color: #fff;
+}
+
+.send-btn:hover:not(:disabled) {
+  background: var(--accent-hover);
 }
 
 /* ==================== 状态文字 ==================== */
@@ -374,7 +489,6 @@ body {
   color: var(--error);
 }
 
-/* ==================== 光标闪烁动画 ==================== */
 @keyframes blink {
   0%, 100% { opacity: 1; }
   50% { opacity: 0; }
@@ -382,7 +496,7 @@ body {
 
 .cursor-blink {
   display: inline-block;
-  color: var(--accent);
+  color: currentColor;
   animation: blink 0.8s step-end infinite;
   margin-left: 1px;
 }
