@@ -34,22 +34,23 @@ export async function insertText(host, text) {
   }
 }
 
-export async function countWordMatches(searchText) {
-  // eslint-disable-next-line no-undef
-  return Word.run(async (context) => {
-    const results = context.document.body.search(searchText, {
-      matchCase: false,
-      matchWholeWord: false,
-    });
-    results.load('items');
-    await context.sync();
-    return results.items.length;
-  });
-}
-
 export async function replaceWordMatches(searchText, replacementText) {
   // eslint-disable-next-line no-undef
   return Word.run(async (context) => {
+    const selection = context.document.getSelection();
+    selection.load('text');
+    await context.sync();
+
+    if (selection.text.trim()) {
+      const replaced = replaceLiteralText(selection.text, searchText, replacementText);
+      if (replaced.count > 0) {
+        // eslint-disable-next-line no-undef
+        selection.insertText(replaced.text, Word.InsertLocation.replace);
+        await context.sync();
+      }
+      return { count: replaced.count, scope: '选区' };
+    }
+
     const results = context.document.body.search(searchText, {
       matchCase: false,
       matchWholeWord: false,
@@ -64,25 +65,24 @@ export async function replaceWordMatches(searchText, replacementText) {
     }
 
     await context.sync();
-    return results.items.length;
+    return { count: results.items.length, scope: '全文' };
   });
 }
 
-export async function getWordBodySnapshot() {
+export async function getWordBodyOoxmlSnapshot() {
   // eslint-disable-next-line no-undef
   return Word.run(async (context) => {
-    const body = context.document.body;
-    body.load('text');
+    const ooxml = context.document.body.getOoxml();
     await context.sync();
-    return body.text || '';
+    return ooxml.value;
   });
 }
 
-export async function restoreWordBodySnapshot(text) {
+export async function restoreWordBodyOoxmlSnapshot(ooxml) {
   // eslint-disable-next-line no-undef
   return Word.run(async (context) => {
     // eslint-disable-next-line no-undef
-    context.document.body.insertText(text, Word.InsertLocation.replace);
+    context.document.body.insertOoxml(ooxml, Word.InsertLocation.replace);
     await context.sync();
   });
 }
@@ -90,6 +90,17 @@ export async function restoreWordBodySnapshot(text) {
 export async function previewWordMatches(searchText, replacementText, limit = 3) {
   // eslint-disable-next-line no-undef
   return Word.run(async (context) => {
+    const selection = context.document.getSelection();
+    selection.load('text');
+    await context.sync();
+
+    if (selection.text.trim()) {
+      return {
+        ...previewLiteralText(selection.text, searchText, replacementText, limit),
+        scope: '选区',
+      };
+    }
+
     const results = context.document.body.search(searchText, {
       matchCase: false,
       matchWholeWord: false,
@@ -101,6 +112,7 @@ export async function previewWordMatches(searchText, replacementText, limit = 3)
 
     return {
       count: results.items.length,
+      scope: '全文',
       examples: results.items.slice(0, limit).map(item => ({
         before: item.text || searchText,
         after: replacementText,
@@ -204,6 +216,40 @@ function analysisTextToRows(text) {
     [''],
     ...bodyRows,
   ];
+}
+
+function escapeRegExp(text) {
+  return text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+function replaceLiteralText(text, searchText, replacementText) {
+  if (!searchText) return { count: 0, text };
+  let count = 0;
+  const regex = new RegExp(escapeRegExp(searchText), 'gi');
+  const nextText = text.replace(regex, () => {
+    count += 1;
+    return replacementText;
+  });
+  return { count, text: nextText };
+}
+
+function previewLiteralText(text, searchText, replacementText, limit) {
+  if (!searchText) return { count: 0, examples: [] };
+  const regex = new RegExp(escapeRegExp(searchText), 'gi');
+  const examples = [];
+  let count = 0;
+  let match = regex.exec(text);
+  while (match) {
+    count += 1;
+    if (examples.length < limit) {
+      examples.push({
+        before: match[0],
+        after: replacementText,
+      });
+    }
+    match = regex.exec(text);
+  }
+  return { count, examples };
 }
 
 // ==================== PowerPoint ====================

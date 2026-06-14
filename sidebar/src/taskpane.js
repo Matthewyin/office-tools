@@ -2,11 +2,10 @@ import { completeChat, streamChat, testLLMConfig } from './llm.js';
 import {
   getSelectedText,
   insertText,
-  countWordMatches,
-  getWordBodySnapshot,
+  getWordBodyOoxmlSnapshot,
   previewWordMatches,
   replaceWordMatches,
-  restoreWordBodySnapshot,
+  restoreWordBodyOoxmlSnapshot,
   createExcelAnalysisSheet,
 } from './office-actions.js';
 
@@ -625,12 +624,12 @@ async function generateAndInsertWordContent(commandText) {
     assistantMessage.pending = false;
     renderChatMessages();
 
-    const beforeText = await getWordBodySnapshot();
+    const beforeOoxml = await getWordBodyOoxmlSnapshot();
     await insertText(currentHost, assistantMessage.content);
     lastRollback = {
-      type: 'word-body-text',
+      type: 'word-body-ooxml',
       label: '撤销写入文档',
-      snapshot: beforeText,
+      snapshot: beforeOoxml,
     };
     addMessage('assistant', '已写入 Word 文档。');
     showToast('已写入文档');
@@ -651,13 +650,13 @@ async function handleRollbackCommand(input) {
     addMessage('assistant', '没有可撤销的上一次文档操作。', { error: true });
     return true;
   }
-  if (lastRollback.type !== 'word-body-text') {
+  if (lastRollback.type !== 'word-body-ooxml') {
     addMessage('assistant', '当前上一次操作暂不支持撤销。', { error: true });
     return true;
   }
 
   try {
-    await restoreWordBodySnapshot(lastRollback.snapshot);
+    await restoreWordBodyOoxmlSnapshot(lastRollback.snapshot);
     addMessage('assistant', `已执行：${lastRollback.label}`);
     lastRollback = null;
     showToast('已撤销上次操作');
@@ -686,15 +685,16 @@ async function previewWordReplace(parsed, fromChat) {
       'Word 查找替换',
       `查找内容：${parsed.searchText}`,
       `替换为：${parsed.replacementText || '（空文本）'}`,
-      `预计影响：${preview.count} 处正文匹配`,
+      `作用范围：${preview.scope}`,
+      `预计影响：${preview.count} 处匹配`,
       '',
       ...formatDiffExamples(preview.examples),
     ].join('\n'));
 
     if (fromChat) {
       addMessage('assistant', preview.count > 0
-        ? `已识别为 Word 查找替换操作，预计影响 ${preview.count} 处。请确认后执行。`
-        : '已识别为 Word 查找替换操作，但正文中没有匹配内容。');
+        ? `已识别为 Word 查找替换操作，作用范围：${preview.scope}，预计影响 ${preview.count} 处。请确认后执行。`
+        : `已识别为 Word 查找替换操作，但${preview.scope}中没有匹配内容。`);
     }
   } catch (err) {
     addMessage('assistant', `预览失败: ${err.message}`, { error: true });
@@ -748,19 +748,20 @@ async function confirmPendingAction() {
 
   try {
     if (action.type === 'word-replace') {
-      const beforeText = await getWordBodySnapshot();
-      const replacedCount = await replaceWordMatches(action.searchText, action.replacementText);
+      const beforeOoxml = await getWordBodyOoxmlSnapshot();
+      const replaced = await replaceWordMatches(action.searchText, action.replacementText);
       lastRollback = {
-        type: 'word-body-text',
+        type: 'word-body-ooxml',
         label: `撤销替换：${action.searchText} → ${action.replacementText}`,
-        snapshot: beforeText,
+        snapshot: beforeOoxml,
       };
       addMessage('assistant', [
         '已完成 Word 查找替换。',
         '',
         `查找内容：${action.searchText}`,
         `替换为：${action.replacementText || '（空文本）'}`,
-        `实际替换：${replacedCount} 处`,
+        `作用范围：${replaced.scope}`,
+        `实际替换：${replaced.count} 处`,
         '',
         '如需恢复，可输入“撤销上次操作”。',
       ].join('\n'));
