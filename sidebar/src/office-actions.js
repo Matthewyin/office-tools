@@ -68,6 +68,47 @@ export async function replaceWordMatches(searchText, replacementText) {
   });
 }
 
+export async function getWordBodySnapshot() {
+  // eslint-disable-next-line no-undef
+  return Word.run(async (context) => {
+    const body = context.document.body;
+    body.load('text');
+    await context.sync();
+    return body.text || '';
+  });
+}
+
+export async function restoreWordBodySnapshot(text) {
+  // eslint-disable-next-line no-undef
+  return Word.run(async (context) => {
+    // eslint-disable-next-line no-undef
+    context.document.body.insertText(text, Word.InsertLocation.replace);
+    await context.sync();
+  });
+}
+
+export async function previewWordMatches(searchText, replacementText, limit = 3) {
+  // eslint-disable-next-line no-undef
+  return Word.run(async (context) => {
+    const results = context.document.body.search(searchText, {
+      matchCase: false,
+      matchWholeWord: false,
+    });
+    results.load('items');
+    await context.sync();
+    results.items.slice(0, limit).forEach(item => item.load('text'));
+    await context.sync();
+
+    return {
+      count: results.items.length,
+      examples: results.items.slice(0, limit).map(item => ({
+        before: item.text || searchText,
+        after: replacementText,
+      })),
+    };
+  });
+}
+
 export async function createExcelAnalysisSheet(analysisText) {
   // eslint-disable-next-line no-undef
   return Excel.run(async (context) => {

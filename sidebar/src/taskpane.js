@@ -3,7 +3,10 @@ import {
   getSelectedText,
   insertText,
   countWordMatches,
+  getWordBodySnapshot,
+  previewWordMatches,
   replaceWordMatches,
+  restoreWordBodySnapshot,
   createExcelAnalysisSheet,
 } from './office-actions.js';
 
@@ -13,6 +16,7 @@ let chatMessages = [];
 let modelProfiles = [];
 let selectedModelId = '';
 let expandedModelIds = new Set();
+let lastRollback = null;
 
 // eslint-disable-next-line no-undef
 Office.onReady((info) => {
@@ -366,6 +370,8 @@ async function handleSend() {
   addMessage('user', userPrompt);
   textarea.value = '';
 
+  if (await handleRollbackCommand(userPrompt)) return;
+
   const handledByAction = await previewActionFromPrompt(userPrompt, true);
   if (handledByAction) return;
 
@@ -509,7 +515,12 @@ async function planDocumentAction(commandText) {
       },
     ], getSelectedModelConfig());
     const action = parsePlannerJson(responseText);
-    return isValidPlannedAction(action) ? action : null;
+    const validation = validatePlannedAction(action);
+    if (!validation.valid) {
+      console.warn('操作计划无效:', validation.reason, action);
+      return null;
+    }
+    return action;
   } catch (err) {
     console.warn('操作规划失败:', err);
     return null;
@@ -551,19 +562,45 @@ function parsePlannerJson(text) {
   return JSON.parse(cleaned.slice(start, end + 1));
 }
 
-function isValidPlannedAction(action) {
-  if (!action || typeof action !== 'object') return false;
-  if (action.action === 'chat') return true;
+function validatePlannedAction(action) {
+  if (!action || typeof action !== 'object') {
+    return { valid: false, reason: '计划不是对象' };
+  }
+  if (typeof action.action !== 'string') {
+    return { valid: false, reason: '缺少 action' };
+  }
+  if (action.action === 'chat') {
+    return { valid: true };
+  }
   if (action.action === 'word_replace') {
-    return Boolean(action.searchText && action.replacementText !== undefined);
+    if (currentHost !== 'Word') return { valid: false, reason: '当前不是 Word' };
+    if (typeof action.searchText !== 'string' || !action.searchText.trim()) {
+      return { valid: false, reason: '缺少 searchText' };
+    }
+    if (typeof action.replacementText !== 'string') {
+      return { valid: false, reason: '缺少 replacementText' };
+    }
+    action.searchText = action.searchText.trim();
+    action.replacementText = action.replacementText.trim();
+    return { valid: true };
   }
   if (action.action === 'word_insert') {
-    return Boolean(action.instruction);
+    if (currentHost !== 'Word') return { valid: false, reason: '当前不是 Word' };
+    if (typeof action.instruction !== 'string' || !action.instruction.trim()) {
+      return { valid: false, reason: '缺少 instruction' };
+    }
+    action.instruction = action.instruction.trim();
+    return { valid: true };
   }
   if (action.action === 'excel_analysis_sheet') {
-    return Boolean(action.instruction);
+    if (currentHost !== 'Excel') return { valid: false, reason: '当前不是 Excel' };
+    if (typeof action.instruction !== 'string' || !action.instruction.trim()) {
+      return { valid: false, reason: '缺少 instruction' };
+    }
+    action.instruction = action.instruction.trim();
+    return { valid: true };
   }
-  return false;
+  return { valid: false, reason: `未知 action: ${action.action}` };
 }
 
 async function generateAndInsertWordContent(commandText) {
@@ -588,7 +625,13 @@ async function generateAndInsertWordContent(commandText) {
     assistantMessage.pending = false;
     renderChatMessages();
 
+    const beforeText = await getWordBodySnapshot();
     await insertText(currentHost, assistantMessage.content);
+    lastRollback = {
+      type: 'word-body-text',
+      label: '撤销写入文档',
+      snapshot: beforeText,
+    };
     addMessage('assistant', '已写入 Word 文档。');
     showToast('已写入文档');
   } catch (err) {
@@ -600,30 +643,57 @@ async function generateAndInsertWordContent(commandText) {
   }
 }
 
+async function handleRollbackCommand(input) {
+  if (!/(撤销|回滚|恢复)(上次|刚才|最近)?(操作|修改|写入|替换)?/.test(input)) {
+    return false;
+  }
+  if (!lastRollback) {
+    addMessage('assistant', '没有可撤销的上一次文档操作。', { error: true });
+    return true;
+  }
+  if (lastRollback.type !== 'word-body-text') {
+    addMessage('assistant', '当前上一次操作暂不支持撤销。', { error: true });
+    return true;
+  }
+
+  try {
+    await restoreWordBodySnapshot(lastRollback.snapshot);
+    addMessage('assistant', `已执行：${lastRollback.label}`);
+    lastRollback = null;
+    showToast('已撤销上次操作');
+  } catch (err) {
+    addMessage('assistant', `撤销失败: ${err.message}`, { error: true });
+  }
+  return true;
+}
+
 async function previewWordReplace(parsed, fromChat) {
   const previewBtn = document.getElementById('btn-preview-action');
   previewBtn.disabled = true;
   try {
-    const count = await countWordMatches(parsed.searchText);
+    const preview = await previewWordMatches(parsed.searchText, parsed.replacementText);
     pendingAction = {
       type: 'word-replace',
       searchText: parsed.searchText,
       replacementText: parsed.replacementText,
-      count,
+      count: preview.count,
+      preview,
     };
 
     const confirmBtn = document.getElementById('btn-confirm-action');
-    confirmBtn.disabled = count === 0;
+    confirmBtn.disabled = preview.count === 0;
     showActionPreview([
       'Word 查找替换',
       `查找内容：${parsed.searchText}`,
       `替换为：${parsed.replacementText || '（空文本）'}`,
-      `预计影响：${count} 处正文匹配`,
+      `预计影响：${preview.count} 处正文匹配`,
+      '',
+      ...formatDiffExamples(preview.examples),
     ].join('\n'));
 
     if (fromChat) {
-      addMessage('assistant', count > 0
-        ? `已识别为 Word 查找替换操作，预计影响 ${count} 处。请确认后执行。`
+      addMessage('assistant', preview.count > 0
+        ? `已识别为 Word 查找替换操作，预计影响 ${preview.count} 处。请确认后执行。`
         : '已识别为 Word 查找替换操作，但正文中没有匹配内容。');
     }
   } catch (err) {
@@ -678,13 +748,21 @@ async function confirmPendingAction() {
 
   try {
     if (action.type === 'word-replace') {
+      const beforeText = await getWordBodySnapshot();
       const replacedCount = await replaceWordMatches(action.searchText, action.replacementText);
+      lastRollback = {
+        type: 'word-body-text',
+        label: `撤销替换：${action.searchText} → ${action.replacementText}`,
+        snapshot: beforeText,
+      };
       addMessage('assistant', [
         '已完成 Word 查找替换。',
         '',
         `查找内容：${action.searchText}`,
         `替换为：${action.replacementText || '（空文本）'}`,
         `实际替换：${replacedCount} 处`,
+        '',
+        '如需恢复，可输入“撤销上次操作”。',
       ].join('\n'));
       showToast('替换完成');
     }
@@ -777,6 +855,17 @@ function parseReplaceCommand(input) {
 
 function normalizeCommandPart(value) {
   return String(value || '').trim().replace(/[。.!！]$/, '').trim();
+}
+
+function formatDiffExamples(examples) {
+  if (!examples.length) return ['预览：未找到匹配文本'];
+  return [
+    '预览：',
+    ...examples.flatMap((example, index) => [
+      `${index + 1}. 原文：${example.before}`,
+      `   新文：${example.after || '（空文本）'}`,
+    ]),
+  ];
 }
 
 // ==================== 工具函数 ====================
