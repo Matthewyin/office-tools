@@ -5,6 +5,11 @@ import os from 'os';
 import { execSync } from 'child_process';
 
 const manifestSrc = path.resolve('manifest.xml');
+const manifestFileName = 'office-llm-sidebar.xml';
+const ownedManifestIds = [
+  '438195b4-65fc-431d-936b-af3d1b4cb3c8',
+  'c93ba0e2-8bdc-4724-9c6a-1a9f34f34cc2',
+];
 
 const targets = [
   { name: 'Word',        container: 'com.microsoft.Word' },
@@ -24,11 +29,18 @@ for (const { name, container } of targets) {
     os.homedir(),
     'Library', 'Containers', container, 'Data', 'Documents', 'wef'
   );
-  const destPath = path.join(wefDir, 'manifest.xml');
+  const destPath = path.join(wefDir, manifestFileName);
+  const legacyPath = path.join(wefDir, 'manifest.xml');
 
   try {
     fs.mkdirSync(wefDir, { recursive: true });
     fs.copyFileSync(manifestSrc, destPath);
+    if (legacyPath !== destPath && fs.existsSync(legacyPath)) {
+      const legacyContent = fs.readFileSync(legacyPath, 'utf8');
+      if (ownedManifestIds.some(id => legacyContent.includes(id))) {
+        fs.unlinkSync(legacyPath);
+      }
+    }
     console.log(`✓ ${name}: ${destPath}`);
     anySuccess = true;
   } catch (err) {
