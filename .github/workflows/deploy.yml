@@ -1,0 +1,39 @@
+name: 部署 Office AI 助手到 GitHub Pages
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'sidebar/**'
+      - '.github/workflows/deploy.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-deploy:
+    concurrency: ci-${{ github.ref }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: 检出代码 🛎️
+        uses: actions/checkout@v4
+
+      - name: 安装 Node.js 🔧
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+          cache-dependency-path: sidebar/package-lock.json
+
+      - name: 安装依赖并打包项目 🏗️
+        run: |
+          cd sidebar
+          npm ci
+          npm run build
+
+      - name: 部署到 GitHub Pages 分支 🚀
+        uses: JamesIves/github-pages-deploy-action@v4
+        with:
+          folder: sidebar/dist
+          branch: gh-pages

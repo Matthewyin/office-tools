@@ -13,6 +13,7 @@ const httpsConfig = fs.existsSync(keyPath) && fs.existsSync(certPath)
   : true; // 退回到自签名证书
 
 export default defineConfig({
+  base: '/office-tools/',
   server: {
     port: 30030,
     https: httpsConfig,

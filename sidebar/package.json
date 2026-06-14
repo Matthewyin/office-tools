@@ -7,13 +7,7 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "sideload": "node scripts/sideload.js",
-    "service:install": "cp com.officetools.sidebar.plist ~/Library/LaunchAgents/ && launchctl load ~/Library/LaunchAgents/com.officetools.sidebar.plist",
-    "service:start": "launchctl start com.officetools.sidebar",
-    "service:stop": "launchctl stop com.officetools.sidebar",
-    "service:restart": "launchctl stop com.officetools.sidebar && sleep 1 && launchctl start com.officetools.sidebar",
-    "service:uninstall": "launchctl unload ~/Library/LaunchAgents/com.officetools.sidebar.plist && rm ~/Library/LaunchAgents/com.officetools.sidebar.plist",
-    "service:log": "tail -f ~/Library/Logs/officetools-sidebar.log"
+    "sideload": "node scripts/sideload.js"
   },
   "devDependencies": {
     "office-addin-dev-certs": "^1.12.0",
