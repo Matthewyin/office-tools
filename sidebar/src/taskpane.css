@@ -1,34 +1,31 @@
 /* ==================== 设计系统 Token ==================== */
 :root {
-  --bg-base: #0f1117;
-  --bg-surface: #1a1f2e;
-  --bg-elevated: #242938;
-  --bg-hover: #2d3347;
+  --bg-base: #f5f5f7;
+  --bg-surface: #ffffff;
+  --bg-elevated: #f9fafb;
+  --bg-hover: #f2f3f5;
 
-  --text-primary: #e2e8f0;
-  --text-secondary: #94a3b8;
-  --text-muted: #64748b;
+  --text-primary: #1d1d1f;
+  --text-secondary: #515154;
+  --text-muted: #86868b;
 
-  --accent: #4f8ef7;
-  --accent-glow: rgba(79, 142, 247, 0.25);
-  --accent-hover: #6ba3ff;
-  --success: #34d399;
-  --error: #f87171;
-  --warning: #fbbf24;
+  --accent: #007aff;
+  --accent-hover: #006ee6;
+  --accent-soft: #e8f2ff;
+  --success: #1f8f4d;
+  --error: #d70015;
 
-  --border: rgba(255, 255, 255, 0.08);
-  --border-focus: rgba(79, 142, 247, 0.6);
+  --border: rgba(0, 0, 0, 0.12);
+  --border-soft: rgba(0, 0, 0, 0.08);
+  --border-focus: rgba(0, 122, 255, 0.45);
 
-  --radius-sm: 6px;
-  --radius-md: 10px;
-  --radius-lg: 14px;
-  --radius-pill: 999px;
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
 
-  --font: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-  --font-mono: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', monospace;
-
-  --transition: 150ms ease;
-  --shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+  --font: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', sans-serif;
+  --transition: 140ms ease;
+  --shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
 }
 
 /* ==================== 基础重置 ==================== */
@@ -44,8 +41,12 @@ html, body {
   color: var(--text-primary);
   font-family: var(--font);
   font-size: 13px;
-  line-height: 1.6;
+  line-height: 1.5;
   -webkit-font-smoothing: antialiased;
+}
+
+body {
+  overflow: hidden;
 }
 
 #app {
@@ -55,55 +56,59 @@ html, body {
   overflow: hidden;
 }
 
+.icon {
+  width: 15px;
+  height: 15px;
+  flex: 0 0 auto;
+  stroke-width: 1.9;
+}
+
 /* ==================== 头部 ==================== */
 .header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 10px 14px;
-  background: var(--bg-surface);
-  border-bottom: 1px solid var(--border);
+  padding: 12px 14px 10px;
+  background: rgba(255, 255, 255, 0.92);
+  border-bottom: 1px solid var(--border-soft);
   flex-shrink: 0;
+  backdrop-filter: blur(16px);
 }
 
 .header-title {
-  display: flex;
-  align-items: center;
-  gap: 8px;
   font-size: 14px;
-  font-weight: 600;
+  font-weight: 650;
   color: var(--text-primary);
-  letter-spacing: 0.01em;
-}
-
-.header-icon {
-  font-size: 16px;
+  letter-spacing: 0;
 }
 
 .icon-btn {
-  background: none;
-  border: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 50%;
+  color: var(--text-secondary);
   cursor: pointer;
-  padding: 4px 6px;
-  border-radius: var(--radius-sm);
-  font-size: 16px;
-  opacity: 0.7;
-  transition: opacity var(--transition), background var(--transition);
+  transition: background var(--transition), border-color var(--transition), color var(--transition);
 }
 
 .icon-btn:hover {
-  opacity: 1;
   background: var(--bg-hover);
+  color: var(--text-primary);
 }
 
 /* ==================== 设置面板 ==================== */
 .settings-panel {
   background: var(--bg-surface);
-  border-bottom: 1px solid var(--border);
+  border-bottom: 1px solid var(--border-soft);
   flex-shrink: 0;
   overflow: hidden;
-  transition: max-height 0.25s ease, opacity 0.25s ease;
-  max-height: 400px;
+  transition: max-height 0.24s ease, opacity 0.2s ease;
+  max-height: 420px;
   opacity: 1;
 }
 
@@ -124,36 +129,37 @@ html, body {
 .main {
   flex: 1;
   overflow-y: auto;
-  padding: 12px;
+  padding: 14px;
   display: flex;
   flex-direction: column;
-  gap: 14px;
-  scrollbar-width: thin;
-  scrollbar-color: var(--bg-hover) transparent;
+  gap: 16px;
 }
 
-.main::-webkit-scrollbar {
-  width: 4px;
+.main::-webkit-scrollbar,
+.output-area::-webkit-scrollbar {
+  width: 8px;
 }
-.main::-webkit-scrollbar-track { background: transparent; }
-.main::-webkit-scrollbar-thumb {
-  background: var(--bg-hover);
-  border-radius: 2px;
+
+.main::-webkit-scrollbar-thumb,
+.output-area::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.18);
+  border: 2px solid transparent;
+  border-radius: 999px;
+  background-clip: padding-box;
 }
 
 /* ==================== 字段标签 ==================== */
 .section-title {
+  display: block;
   font-size: 11px;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
+  font-weight: 650;
   color: var(--text-muted);
-  margin-bottom: 6px;
+  margin-bottom: 7px;
 }
 
 .field-label {
   font-size: 12px;
-  font-weight: 500;
+  font-weight: 560;
   color: var(--text-secondary);
   display: block;
 }
@@ -161,25 +167,29 @@ html, body {
 /* ==================== 表单输入 ==================== */
 .input, .textarea {
   width: 100%;
-  background: var(--bg-elevated);
+  background: var(--bg-surface);
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
   color: var(--text-primary);
   font-family: var(--font);
   font-size: 13px;
-  padding: 8px 10px;
-  transition: border-color var(--transition), box-shadow var(--transition);
+  padding: 9px 10px;
+  transition: border-color var(--transition), box-shadow var(--transition), background var(--transition);
   outline: none;
   resize: none;
 }
 
+.textarea {
+  min-height: 54px;
+}
+
 .input::placeholder, .textarea::placeholder {
-  color: var(--text-muted);
+  color: #a1a1a6;
 }
 
 .input:focus, .textarea:focus {
   border-color: var(--border-focus);
-  box-shadow: 0 0 0 3px var(--accent-glow);
+  box-shadow: 0 0 0 3px rgba(0, 122, 255, 0.14);
 }
 
 /* ==================== 按钮 ==================== */
@@ -187,43 +197,60 @@ html, body {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 5px;
-  border: none;
+  gap: 6px;
+  min-height: 34px;
+  border: 1px solid transparent;
   border-radius: var(--radius-sm);
   cursor: pointer;
   font-family: var(--font);
   font-size: 13px;
-  font-weight: 500;
-  padding: 8px 14px;
-  transition: background var(--transition), transform var(--transition), opacity var(--transition);
+  font-weight: 600;
+  padding: 7px 12px;
+  transition: background var(--transition), border-color var(--transition), color var(--transition), opacity var(--transition);
   white-space: nowrap;
 }
 
-.btn:active { transform: scale(0.97); }
-.btn:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
+.btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
 
 .btn-primary {
   background: var(--accent);
   color: #fff;
 }
-.btn-primary:hover:not(:disabled) { background: var(--accent-hover); }
+
+.btn-primary:hover:not(:disabled) {
+  background: var(--accent-hover);
+}
 
 .btn-secondary {
-  background: var(--bg-elevated);
+  background: var(--bg-surface);
   color: var(--text-primary);
-  border: 1px solid var(--border);
+  border-color: var(--border);
 }
-.btn-secondary:hover:not(:disabled) { background: var(--bg-hover); }
+
+.btn-secondary:hover:not(:disabled) {
+  background: var(--bg-hover);
+}
 
 .btn-ghost {
+  width: 30px;
+  min-height: 30px;
+  padding: 0;
   background: transparent;
   color: var(--text-muted);
 }
-.btn-ghost:hover:not(:disabled) { background: var(--bg-elevated); color: var(--text-secondary); }
+
+.btn-ghost:hover:not(:disabled) {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
 
 .btn-sm {
+  min-height: 30px;
   font-size: 12px;
-  padding: 5px 10px;
+  padding: 5px 9px;
 }
 
 .btn-row {
@@ -232,48 +259,52 @@ html, body {
   justify-content: flex-end;
 }
 
-/* ==================== 快捷操作 Pill ==================== */
-.quick-actions { flex-shrink: 0; }
+/* ==================== 快捷操作 ==================== */
+.quick-actions {
+  flex-shrink: 0;
+}
 
 .pill-group {
   display: flex;
   flex-wrap: wrap;
-  gap: 6px;
+  gap: 7px;
 }
 
 .pill {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
-  background: var(--bg-elevated);
+  gap: 6px;
+  min-height: 30px;
+  background: var(--bg-surface);
   border: 1px solid var(--border);
-  border-radius: var(--radius-pill);
+  border-radius: 999px;
   color: var(--text-secondary);
   cursor: pointer;
   font-family: var(--font);
   font-size: 12px;
-  font-weight: 500;
-  padding: 4px 12px;
-  transition: background var(--transition), color var(--transition), border-color var(--transition), transform var(--transition);
+  font-weight: 560;
+  padding: 5px 10px;
+  transition: background var(--transition), color var(--transition), border-color var(--transition);
 }
 
 .pill:hover {
-  background: var(--accent-glow);
-  border-color: var(--border-focus);
+  background: var(--accent-soft);
+  border-color: rgba(0, 122, 255, 0.2);
   color: var(--accent);
-  transform: translateY(-1px);
 }
 
-.pill:active { transform: translateY(0); }
-
 /* ==================== 输出区域 ==================== */
-.output-section { flex: 1; min-height: 120px; }
+.output-section {
+  flex: 1;
+  min-height: 140px;
+}
 
 .output-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 6px;
+  gap: 10px;
+  margin-bottom: 7px;
 }
 
 .output-actions {
@@ -290,21 +321,20 @@ html, body {
   max-height: 360px;
   overflow-y: auto;
   font-size: 13px;
-  line-height: 1.7;
+  line-height: 1.65;
   color: var(--text-primary);
   word-break: break-word;
   white-space: pre-wrap;
-  scrollbar-width: thin;
-  scrollbar-color: var(--bg-hover) transparent;
+  box-shadow: 0 1px 0 rgba(0, 0, 0, 0.03);
 }
 
-.output-area::-webkit-scrollbar { width: 4px; }
-.output-area::-webkit-scrollbar-track { background: transparent; }
-.output-area::-webkit-scrollbar-thumb { background: var(--bg-hover); border-radius: 2px; }
+.output-placeholder {
+  color: var(--text-muted);
+}
 
-.output-placeholder { color: var(--text-muted); font-style: italic; }
-
-.error-text { color: var(--error); }
+.error-text {
+  color: var(--error);
+}
 
 /* ==================== 状态文字 ==================== */
 .status-text {
@@ -312,8 +342,14 @@ html, body {
   color: var(--text-muted);
   min-height: 16px;
 }
-.status-text.success { color: var(--success); }
-.status-text.error { color: var(--error); }
+
+.status-text.success {
+  color: var(--success);
+}
+
+.status-text.error {
+  color: var(--error);
+}
 
 /* ==================== 光标闪烁动画 ==================== */
 @keyframes blink {
@@ -333,13 +369,12 @@ html, body {
   position: fixed;
   bottom: 16px;
   left: 50%;
-  transform: translateX(-50%) translateY(20px);
-  background: var(--bg-elevated);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-md);
-  color: var(--text-primary);
+  transform: translateX(-50%) translateY(14px);
+  background: rgba(29, 29, 31, 0.92);
+  border-radius: 999px;
+  color: #fff;
   font-size: 12px;
-  padding: 8px 16px;
+  padding: 8px 14px;
   box-shadow: var(--shadow);
   opacity: 0;
   transition: opacity 0.2s ease, transform 0.2s ease;
@@ -351,10 +386,4 @@ html, body {
 .toast.show {
   opacity: 1;
   transform: translateX(-50%) translateY(0);
-}
-
-/* ==================== 滚动条美化（整体） ==================== */
-* {
-  scrollbar-width: thin;
-  scrollbar-color: var(--bg-hover) transparent;
 }

@@ -6,20 +6,95 @@
   <title>AI 助手</title>
   <!-- Office.js 必须从 CDN 加载，且必须在所有其他脚本之前 -->
   <script src="https://appsforoffice.microsoft.com/lib/1/hosted/office.js"></script>
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="/src/taskpane.css" />
 </head>
 <body>
+  <svg aria-hidden="true" style="position:absolute;width:0;height:0;overflow:hidden">
+    <symbol id="icon-settings" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Z"/>
+      <path d="M19.4 15a1.8 1.8 0 0 0 .36 1.98l.04.04a2.1 2.1 0 0 1-2.97 2.97l-.04-.04a1.8 1.8 0 0 0-1.98-.36 1.8 1.8 0 0 0-1.09 1.65V21.3a2.1 2.1 0 0 1-4.2 0v-.06a1.8 1.8 0 0 0-1.09-1.65 1.8 1.8 0 0 0-1.98.36l-.04.04a2.1 2.1 0 0 1-2.97-2.97l.04-.04A1.8 1.8 0 0 0 3.8 15a1.8 1.8 0 0 0-1.65-1.09H2.1a2.1 2.1 0 0 1 0-4.2h.06A1.8 1.8 0 0 0 3.8 8.62a1.8 1.8 0 0 0-.36-1.98l-.04-.04a2.1 2.1 0 0 1 2.97-2.97l.04.04a1.8 1.8 0 0 0 1.98.36A1.8 1.8 0 0 0 9.5 2.38V2.1a2.1 2.1 0 0 1 4.2 0v.06a1.8 1.8 0 0 0 1.09 1.65 1.8 1.8 0 0 0 1.98-.36l.04-.04a2.1 2.1 0 0 1 2.97 2.97l-.04.04a1.8 1.8 0 0 0-.36 1.98 1.8 1.8 0 0 0 1.65 1.09h.06a2.1 2.1 0 0 1 0 4.2h-.06A1.8 1.8 0 0 0 19.4 15Z"/>
+    </symbol>
+    <symbol id="icon-edit" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
+      <path d="m4 20 4.5-1 10.7-10.7a2.1 2.1 0 0 0-3-3L5.5 16 4 20Z"/>
+      <path d="m14.5 6.5 3 3"/>
+    </symbol>
+    <symbol id="icon-language" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M4 5h10"/>
+      <path d="M9 3v2"/>
+      <path d="M11 5c-.8 4.4-3.4 7.2-7 9"/>
+      <path d="M5.5 8.5c1.2 2.2 3.2 4 5.5 5"/>
+      <path d="M14 21l4-9 4 9"/>
+      <path d="M15.3 18h5.4"/>
+    </symbol>
+    <symbol id="icon-list" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M8 6h12"/>
+      <path d="M8 12h12"/>
+      <path d="M8 18h12"/>
+      <path d="M4 6h.01"/>
+      <path d="M4 12h.01"/>
+      <path d="M4 18h.01"/>
+    </symbol>
+    <symbol id="icon-chart" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M4 19V5"/>
+      <path d="M4 19h16"/>
+      <path d="M8 16v-5"/>
+      <path d="M12 16V8"/>
+      <path d="M16 16v-3"/>
+    </symbol>
+    <symbol id="icon-formula" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M5 5h14"/>
+      <path d="M5 19h14"/>
+      <path d="m8 8 4 4-4 4"/>
+      <path d="M14 16h3"/>
+    </symbol>
+    <symbol id="icon-help" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="12" cy="12" r="9"/>
+      <path d="M9.8 9.5a2.4 2.4 0 1 1 3.8 2c-.9.6-1.6 1.1-1.6 2.3"/>
+      <path d="M12 17h.01"/>
+    </symbol>
+    <symbol id="icon-layout" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="4" y="5" width="16" height="14" rx="2"/>
+      <path d="M4 10h16"/>
+      <path d="M10 10v9"/>
+    </symbol>
+    <symbol id="icon-expand" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M8 3H5a2 2 0 0 0-2 2v3"/>
+      <path d="M16 3h3a2 2 0 0 1 2 2v3"/>
+      <path d="M8 21H5a2 2 0 0 1-2-2v-3"/>
+      <path d="M16 21h3a2 2 0 0 0 2-2v-3"/>
+    </symbol>
+    <symbol id="icon-paperclip" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
+      <path d="m21 11-8.5 8.5a5 5 0 0 1-7.1-7.1l9.2-9.2a3.4 3.4 0 0 1 4.8 4.8l-9.2 9.2a1.8 1.8 0 0 1-2.5-2.5L16 6.4"/>
+    </symbol>
+    <symbol id="icon-send" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
+      <path d="m4 12 16-8-5 16-3-7-8-1Z"/>
+      <path d="m12 13 8-9"/>
+    </symbol>
+    <symbol id="icon-insert" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M6 3h9l3 3v15H6V3Z"/>
+      <path d="M14 3v4h4"/>
+      <path d="M12 11v6"/>
+      <path d="M9 14h6"/>
+    </symbol>
+    <symbol id="icon-copy" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="8" y="8" width="11" height="11" rx="2"/>
+      <path d="M5 15H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v1"/>
+    </symbol>
+    <symbol id="icon-close" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M18 6 6 18"/>
+      <path d="m6 6 12 12"/>
+    </symbol>
+  </svg>
   <div id="app">
 
     <!-- 顶部标题栏 -->
     <header class="header">
       <div class="header-title">
-        <span class="header-icon">⚡</span>
         <span>AI 助手</span>
       </div>
-      <button id="btn-settings-toggle" class="icon-btn" title="设置" aria-label="打开设置">⚙️</button>
+      <button id="btn-settings-toggle" class="icon-btn" title="设置" aria-label="打开设置">
+        <svg class="icon"><use href="#icon-settings"></use></svg>
+      </button>
     </header>
 
     <!-- 设置面板（默认折叠） -->
@@ -47,16 +122,16 @@
         <p class="section-title">快捷操作</p>
         <div id="quick-actions-container" class="pill-group">
           <!-- Word 快捷操作 -->
-          <button class="pill host-word" data-action="polish" title="润色选中的文字">✨ 润色</button>
-          <button class="pill host-word" data-action="translate-en" title="将选中文字翻译成英文">🌐 译英文</button>
-          <button class="pill host-word" data-action="summarize" title="总结选中文字">📝 总结</button>
+          <button class="pill host-word" data-action="polish" title="润色选中的文字"><svg class="icon"><use href="#icon-edit"></use></svg><span>润色</span></button>
+          <button class="pill host-word" data-action="translate-en" title="将选中文字翻译成英文"><svg class="icon"><use href="#icon-language"></use></svg><span>译英文</span></button>
+          <button class="pill host-word" data-action="summarize" title="总结选中文字"><svg class="icon"><use href="#icon-list"></use></svg><span>总结</span></button>
           <!-- Excel 快捷操作 -->
-          <button class="pill host-excel" data-action="analyze-data" title="分析选中单元格数据">📊 分析数据</button>
-          <button class="pill host-excel" data-action="gen-formula" title="根据描述生成 Excel 公式">🔢 生成公式</button>
-          <button class="pill host-excel" data-action="explain-formula" title="解释选中单元格中的公式">❓ 解释公式</button>
+          <button class="pill host-excel" data-action="analyze-data" title="分析选中单元格数据"><svg class="icon"><use href="#icon-chart"></use></svg><span>分析数据</span></button>
+          <button class="pill host-excel" data-action="gen-formula" title="根据描述生成 Excel 公式"><svg class="icon"><use href="#icon-formula"></use></svg><span>生成公式</span></button>
+          <button class="pill host-excel" data-action="explain-formula" title="解释选中单元格中的公式"><svg class="icon"><use href="#icon-help"></use></svg><span>解释公式</span></button>
           <!-- PPT 快捷操作 -->
-          <button class="pill host-ppt" data-action="gen-outline" title="根据当前幻灯片内容生成大纲">📋 生成大纲</button>
-          <button class="pill host-ppt" data-action="expand-content" title="扩写选中文字为完整幻灯片内容">📖 扩写内容</button>
+          <button class="pill host-ppt" data-action="gen-outline" title="根据当前幻灯片内容生成大纲"><svg class="icon"><use href="#icon-layout"></use></svg><span>生成大纲</span></button>
+          <button class="pill host-ppt" data-action="expand-content" title="扩写选中文字为完整幻灯片内容"><svg class="icon"><use href="#icon-expand"></use></svg><span>扩写内容</span></button>
         </div>
       </section>
 
@@ -69,8 +144,8 @@
         <textarea id="input-user-prompt" class="textarea" rows="3" placeholder="输入指令，或先选中文档内容再点击快捷操作..."></textarea>
 
         <div class="btn-row">
-          <button id="btn-read-selection" class="btn btn-secondary" title="读取当前选中的内容到提示词">📎 读取选中</button>
-          <button id="btn-send" class="btn btn-primary">发送 ↵</button>
+          <button id="btn-read-selection" class="btn btn-secondary" title="读取当前选中的内容到提示词" data-icon="icon-paperclip"><svg class="icon"><use href="#icon-paperclip"></use></svg><span>读取选中</span></button>
+          <button id="btn-send" class="btn btn-primary" data-icon="icon-send"><svg class="icon"><use href="#icon-send"></use></svg><span>发送</span></button>
         </div>
       </section>
 
@@ -79,9 +154,9 @@
         <div class="output-header">
           <span class="section-title">回复</span>
           <div class="output-actions">
-            <button id="btn-insert" class="btn btn-secondary btn-sm" title="将回复插入到当前光标处" disabled>📥 插入文档</button>
-            <button id="btn-copy" class="btn btn-secondary btn-sm" title="复制回复内容" disabled>📋 复制</button>
-            <button id="btn-clear" class="btn btn-ghost btn-sm" title="清空回复">✕</button>
+            <button id="btn-insert" class="btn btn-secondary btn-sm" title="将回复插入到当前光标处" data-icon="icon-insert" disabled><svg class="icon"><use href="#icon-insert"></use></svg><span>插入</span></button>
+            <button id="btn-copy" class="btn btn-secondary btn-sm" title="复制回复内容" data-icon="icon-copy" disabled><svg class="icon"><use href="#icon-copy"></use></svg><span>复制</span></button>
+            <button id="btn-clear" class="btn btn-ghost btn-sm" title="清空回复" aria-label="清空回复"><svg class="icon"><use href="#icon-close"></use></svg></button>
           </div>
         </div>
         <div id="output-area" class="output-area">

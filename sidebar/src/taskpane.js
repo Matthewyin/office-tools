@@ -79,7 +79,7 @@ function saveSettings() {
   localStorage.setItem('llm_api_key', apiKey);
   localStorage.setItem('llm_model', model || 'gpt-4o-mini');
 
-  showSettingsStatus('✓ 已保存', 'success');
+  showSettingsStatus('已保存', 'success');
 
   // 1.5 秒后自动折叠设置面板
   setTimeout(() => {
@@ -167,7 +167,7 @@ async function handleQuickAction(action) {
 async function readSelectionToPrompt() {
   const btn = document.getElementById('btn-read-selection');
   btn.disabled = true;
-  btn.textContent = '读取中...';
+  setButtonLabel(btn, '读取中...');
   try {
     const text = await getSelectedText(currentHost);
     const textarea = document.getElementById('input-user-prompt');
@@ -179,7 +179,7 @@ async function readSelectionToPrompt() {
     showToast(`读取失败: ${err.message}`);
   } finally {
     btn.disabled = false;
-    btn.textContent = '📎 读取选中';
+    setButtonLabel(btn, '读取选中');
   }
 }
 
@@ -196,7 +196,7 @@ async function handleSend() {
 async function sendToLLM(systemPrompt, userPrompt) {
   const sendBtn = document.getElementById('btn-send');
   sendBtn.disabled = true;
-  sendBtn.textContent = '生成中...';
+  setButtonLabel(sendBtn, '生成中...');
 
   // 清空输出区，准备流式写入
   const outputArea = document.getElementById('output-area');
@@ -224,7 +224,7 @@ async function sendToLLM(systemPrompt, userPrompt) {
     outputArea.innerHTML = `<span class="error-text">错误: ${escapeHtml(err.message)}</span>`;
   } finally {
     sendBtn.disabled = false;
-    sendBtn.textContent = '发送 ↵';
+    setButtonLabel(sendBtn, '发送');
   }
 }
 
@@ -234,15 +234,15 @@ async function handleInsert() {
   if (!lastReplyText) return;
   const btn = document.getElementById('btn-insert');
   btn.disabled = true;
-  btn.textContent = '插入中...';
+  setButtonLabel(btn, '插入中...');
   try {
     await insertText(currentHost, lastReplyText);
-    showToast('✓ 已插入文档');
+    showToast('已插入文档');
   } catch (err) {
     showToast(`插入失败: ${err.message}`);
   } finally {
     btn.disabled = false;
-    btn.textContent = '📥 插入文档';
+    setButtonLabel(btn, '插入');
   }
 }
 
@@ -251,8 +251,8 @@ async function handleCopy() {
   try {
     await navigator.clipboard.writeText(lastReplyText);
     const btn = document.getElementById('btn-copy');
-    btn.textContent = '✓ 已复制';
-    setTimeout(() => { btn.textContent = '📋 复制'; }, 1500);
+    setButtonLabel(btn, '已复制');
+    setTimeout(() => { setButtonLabel(btn, '复制'); }, 1500);
   } catch {
     showToast('复制失败，请手动选择文本复制');
   }
@@ -274,6 +274,15 @@ function escapeHtml(text) {
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;');
+}
+
+function setButtonLabel(btn, label) {
+  const iconId = btn.dataset.icon;
+  if (!iconId) {
+    btn.textContent = label;
+    return;
+  }
+  btn.innerHTML = `<svg class="icon"><use href="#${iconId}"></use></svg><span>${escapeHtml(label)}</span>`;
 }
 
 function showToast(msg) {
