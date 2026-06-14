@@ -39,7 +39,7 @@ for (const { name, container } of targets) {
 if (anySuccess) {
   console.log('\n✅ Sideload 完成！');
   console.log('   请重启 Word/Excel/PowerPoint，然后在「主页」→「加载项」中启用「AI 助手」。');
-  console.log('   确保 npm run dev 正在运行（https://localhost:5173）。\n');
+  console.log('   本地开发时请确保 npm run dev 正在运行（https://localhost:30030）。\n');
 } else {
   console.error('\n❌ 未找到任何 Office 应用容器目录，请确认已安装 Microsoft Office for Mac。');
 }
