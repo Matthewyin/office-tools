@@ -40,6 +40,11 @@
             <OfficeTab id="TabHome">
               <Group id="WordAIGroup">
                 <Label resid="GroupLabel"/>
+                <Icon>
+                  <bt:Image size="16" resid="Icon.16x16"/>
+                  <bt:Image size="32" resid="Icon.32x32"/>
+                  <bt:Image size="80" resid="Icon.80x80"/>
+                </Icon>
                 <Control xsi:type="Button" id="WordAIBtn">
                   <Label resid="TaskPaneButton.Label"/>
                   <Supertip>
@@ -70,6 +75,11 @@
             <OfficeTab id="TabHome">
               <Group id="ExcelAIGroup">
                 <Label resid="GroupLabel"/>
+                <Icon>
+                  <bt:Image size="16" resid="Icon.16x16"/>
+                  <bt:Image size="32" resid="Icon.32x32"/>
+                  <bt:Image size="80" resid="Icon.80x80"/>
+                </Icon>
                 <Control xsi:type="Button" id="ExcelAIBtn">
                   <Label resid="TaskPaneButton.Label"/>
                   <Supertip>
@@ -100,6 +110,11 @@
             <OfficeTab id="TabHome">
               <Group id="PptAIGroup">
                 <Label resid="GroupLabel"/>
+                <Icon>
+                  <bt:Image size="16" resid="Icon.16x16"/>
+                  <bt:Image size="32" resid="Icon.32x32"/>
+                  <bt:Image size="80" resid="Icon.80x80"/>
+                </Icon>
                 <Control xsi:type="Button" id="PptAIBtn">
                   <Label resid="TaskPaneButton.Label"/>
                   <Supertip>
