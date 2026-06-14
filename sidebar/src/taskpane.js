@@ -1,4 +1,4 @@
-import { streamChat, testLLMConfig } from './llm.js';
+import { completeChat, streamChat, testLLMConfig } from './llm.js';
 import {
   getSelectedText,
   insertText,
@@ -456,6 +456,12 @@ async function previewDocumentAction() {
 async function previewActionFromPrompt(commandText, fromChat) {
   if (!commandText) return false;
 
+  const plannedAction = await planDocumentAction(commandText);
+  if (plannedAction) {
+    return await executePlannedAction(plannedAction, commandText, fromChat);
+  }
+
+  // 本地解析只做 LLM 计划失败时的兜底，不作为主要能力边界。
   if (currentHost === 'Word') {
     const parsed = parseReplaceCommand(commandText);
     if (parsed) {
@@ -474,6 +480,89 @@ async function previewActionFromPrompt(commandText, fromChat) {
     return true;
   }
 
+  return false;
+}
+
+async function planDocumentAction(commandText) {
+  try {
+    const responseText = await completeChat([
+      {
+        role: 'system',
+        content: [
+          '你是 Office 加载项的操作规划器，只输出 JSON，不要输出解释。',
+          '根据用户输入判断是否要直接操作当前 Office 文档。',
+          '可用 action：',
+          'chat：普通聊天或无法确定操作。',
+          'word_replace：替换 Word 正文中的文本，必须给出 searchText 和 replacementText。',
+          'word_insert：在 Word 当前光标或选区写入新内容，必须给出 instruction。',
+          'excel_analysis_sheet：读取 Excel 当前选区并创建分析工作表，必须给出 instruction。',
+          '输出格式：{"action":"chat"} 或 {"action":"word_replace","searchText":"A","replacementText":"B"}。',
+          '不要把“文档中的”“正文里的”等位置描述放入 searchText。',
+        ].join('\n'),
+      },
+      {
+        role: 'user',
+        content: JSON.stringify({
+          host: currentHost,
+          input: commandText,
+        }),
+      },
+    ], getSelectedModelConfig());
+    const action = parsePlannerJson(responseText);
+    return isValidPlannedAction(action) ? action : null;
+  } catch (err) {
+    console.warn('操作规划失败:', err);
+    return null;
+  }
+}
+
+async function executePlannedAction(action, commandText, fromChat) {
+  if (action.action === 'chat') return false;
+
+  if (currentHost === 'Word' && action.action === 'word_replace') {
+    await previewWordReplace({
+      searchText: action.searchText,
+      replacementText: action.replacementText,
+    }, fromChat);
+    return true;
+  }
+
+  if (currentHost === 'Word' && action.action === 'word_insert') {
+    await generateAndInsertWordContent(action.instruction || commandText);
+    return true;
+  }
+
+  if (currentHost === 'Excel' && action.action === 'excel_analysis_sheet') {
+    await previewExcelAnalysisToSheet(action.instruction || commandText, fromChat);
+    return true;
+  }
+
+  return false;
+}
+
+function parsePlannerJson(text) {
+  const cleaned = text
+    .replace(/^```(?:json)?/i, '')
+    .replace(/```$/i, '')
+    .trim();
+  const start = cleaned.indexOf('{');
+  const end = cleaned.lastIndexOf('}');
+  if (start < 0 || end < start) return null;
+  return JSON.parse(cleaned.slice(start, end + 1));
+}
+
+function isValidPlannedAction(action) {
+  if (!action || typeof action !== 'object') return false;
+  if (action.action === 'chat') return true;
+  if (action.action === 'word_replace') {
+    return Boolean(action.searchText && action.replacementText !== undefined);
+  }
+  if (action.action === 'word_insert') {
+    return Boolean(action.instruction);
+  }
+  if (action.action === 'excel_analysis_sheet') {
+    return Boolean(action.instruction);
+  }
   return false;
 }
 

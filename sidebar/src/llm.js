@@ -90,6 +90,41 @@ export async function streamChat(messages, onChunk, config) {
   return fullText;
 }
 
+export async function completeChat(messages, config) {
+  const { baseUrl, apiKey, model, reasoningEnabled, reasoningEffort } = getConfig(config);
+
+  if (!apiKey) {
+    throw new Error('请先在设置中填写 API Key。');
+  }
+
+  const body = {
+    model,
+    stream: false,
+    messages,
+  };
+
+  if (reasoningEnabled) {
+    body.reasoning_effort = reasoningEffort;
+  }
+
+  const response = await fetch(`${baseUrl}/chat/completions`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${apiKey}`,
+    },
+    body: JSON.stringify(body),
+  });
+
+  if (!response.ok) {
+    const errText = await response.text();
+    throw new Error(`API 请求失败 (${response.status}): ${errText}`);
+  }
+
+  const data = await response.json();
+  return data.choices?.[0]?.message?.content?.trim() || '';
+}
+
 export async function testLLMConfig(config) {
   const { baseUrl, apiKey, model, reasoningEnabled, reasoningEffort } = getConfig(config);
 
