@@ -6,8 +6,8 @@
   <title>AI 助手</title>
   <!-- Office.js 必须从 CDN 加载，且必须在所有其他脚本之前 -->
   <script src="https://appsforoffice.microsoft.com/lib/1/hosted/office.js"></script>
-  <script type="module" crossorigin src="/office-tools/assets/taskpane-BcYw50i8.js"></script>
-  <link rel="stylesheet" crossorigin href="/office-tools/assets/taskpane-f2Rwnyvd.css">
+  <script type="module" crossorigin src="/office-tools/assets/taskpane-CTiueDg5.js"></script>
+  <link rel="stylesheet" crossorigin href="/office-tools/assets/taskpane-CKtuZ2fw.css">
 </head>
 <body>
   <svg aria-hidden="true" style="position:absolute;width:0;height:0;overflow:hidden">
@@ -101,12 +101,12 @@
 
     <!-- 顶部标题栏 -->
     <header class="header">
-      <div class="header-title">
-        <span>AI 助手</span>
-      </div>
       <button id="btn-settings-toggle" class="icon-btn" title="设置" aria-label="打开设置">
         <svg class="icon"><use href="#icon-settings"></use></svg>
       </button>
+      <div class="header-title">
+        <span>AI 助手</span>
+      </div>
     </header>
 
     <!-- 设置面板（默认折叠） -->
@@ -148,14 +148,20 @@
         <textarea id="input-user-prompt" class="composer-input" rows="3" placeholder="输入问题，或输入“找到文档中的XX，替换为YY”..."></textarea>
         <div class="composer-toolbar">
           <div class="composer-tools">
-            <button id="btn-read-selection" class="icon-tool" title="读取当前选中内容" aria-label="读取当前选中内容">
+            <button id="btn-read-selection" class="icon-tool" title="读取当前 Word/Excel/PPT 选中内容到输入框" aria-label="读取当前 Word、Excel 或 PowerPoint 选中内容到输入框">
               <svg class="icon"><use href="#icon-paperclip"></use></svg>
             </button>
-            <button id="btn-preview-action" class="icon-tool" title="预览可执行操作" aria-label="预览可执行操作">
+            <button id="btn-preview-action" class="icon-tool" title="预览会修改文档的操作，不会立即执行" aria-label="预览会修改文档的操作，不会立即执行">
               <svg class="icon"><use href="#icon-preview"></use></svg>
             </button>
           </div>
           <div class="composer-model">
+            <select id="select-thinking" class="thinking-select" aria-label="选择思考深度">
+              <option value="off">思考关</option>
+              <option value="low">思考低</option>
+              <option value="medium">思考中</option>
+              <option value="high">思考高</option>
+            </select>
             <select id="select-model" class="model-select" aria-label="选择 LLM"></select>
             <button id="btn-send" class="send-btn" title="发送" aria-label="发送">
               <svg class="icon"><use href="#icon-send"></use></svg>
