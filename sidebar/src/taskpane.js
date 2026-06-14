@@ -12,6 +12,7 @@ let pendingAction = null;
 let chatMessages = [];
 let modelProfiles = [];
 let selectedModelId = '';
+let expandedModelIds = new Set();
 
 // eslint-disable-next-line no-undef
 Office.onReady((info) => {
@@ -128,6 +129,7 @@ function addModelProfile() {
   };
   modelProfiles.push(profile);
   selectedModelId = profile.id;
+  expandedModelIds.add(profile.id);
   renderModelConfigList();
   renderModelSelect();
 }
@@ -157,35 +159,46 @@ function renderModelConfigList() {
   list.innerHTML = '';
 
   modelProfiles.forEach((profile, index) => {
+    const expanded = expandedModelIds.has(profile.id) || !isModelConfigured(profile);
     const item = document.createElement('section');
-    item.className = 'model-config';
+    item.className = `model-config${expanded ? ' expanded' : ''}`;
     item.dataset.id = profile.id;
     item.innerHTML = `
       <div class="model-config-header">
-        <span class="model-config-title">模型 ${index + 1}</span>
+        <div class="model-config-heading">
+          <span class="model-config-title">${escapeHtml(profile.name || `模型 ${index + 1}`)}</span>
+          <span class="model-config-summary">${escapeHtml(modelSummary(profile))}</span>
+        </div>
         <div class="model-config-actions">
+          <button class="btn btn-secondary btn-sm" type="button" data-toggle-model="${escapeHtml(profile.id)}">${expanded ? '收起' : '编辑'}</button>
           <button class="btn btn-secondary btn-sm" type="button" data-test-model="${escapeHtml(profile.id)}">测试</button>
           <button class="btn btn-danger btn-sm" type="button" data-remove-model="${escapeHtml(profile.id)}">删除</button>
         </div>
       </div>
-      <input class="input" data-field="name" type="text" placeholder="显示名称，例如 GLM-5.2" value="${escapeHtml(profile.name || '')}" />
-      <input class="input" data-field="baseUrl" type="text" placeholder="API Base URL" value="${escapeHtml(profile.baseUrl || '')}" />
-      <input class="input" data-field="apiKey" type="password" placeholder="API Key" value="${escapeHtml(profile.apiKey || '')}" />
-      <input class="input" data-field="model" type="text" placeholder="Model Name" value="${escapeHtml(profile.model || '')}" />
-      <div class="model-option-row">
-        <label class="checkbox-row">
-          <input data-field="reasoningEnabled" type="checkbox" ${profile.reasoningEnabled ? 'checked' : ''} />
-          <span>启用推理/思考</span>
-        </label>
-        <select class="compact-select" data-field="reasoningEffort" aria-label="默认思考深度">
-          <option value="low" ${profile.reasoningEffort === 'low' ? 'selected' : ''}>低</option>
-          <option value="medium" ${!profile.reasoningEffort || profile.reasoningEffort === 'medium' ? 'selected' : ''}>中</option>
-          <option value="high" ${profile.reasoningEffort === 'high' ? 'selected' : ''}>高</option>
-        </select>
+      <div class="model-config-fields">
+        <input class="input" data-field="name" type="text" placeholder="显示名称，例如 GLM-5.2" value="${escapeHtml(profile.name || '')}" />
+        <input class="input" data-field="baseUrl" type="text" placeholder="API Base URL" value="${escapeHtml(profile.baseUrl || '')}" />
+        <input class="input" data-field="apiKey" type="password" placeholder="API Key" value="${escapeHtml(profile.apiKey || '')}" />
+        <input class="input" data-field="model" type="text" placeholder="Model Name" value="${escapeHtml(profile.model || '')}" />
+        <div class="model-option-row">
+          <label class="checkbox-row">
+            <input data-field="reasoningEnabled" type="checkbox" ${profile.reasoningEnabled ? 'checked' : ''} />
+            <span>启用推理/思考</span>
+          </label>
+          <select class="compact-select" data-field="reasoningEffort" aria-label="默认思考深度">
+            <option value="low" ${profile.reasoningEffort === 'low' ? 'selected' : ''}>低</option>
+            <option value="medium" ${!profile.reasoningEffort || profile.reasoningEffort === 'medium' ? 'selected' : ''}>中</option>
+            <option value="high" ${profile.reasoningEffort === 'high' ? 'selected' : ''}>高</option>
+          </select>
+        </div>
       </div>
       <p class="model-test-status" data-test-status></p>
     `;
     list.appendChild(item);
+  });
+
+  list.querySelectorAll('[data-toggle-model]').forEach(button => {
+    button.addEventListener('click', () => toggleModelEditor(button.dataset.toggleModel));
   });
 
   list.querySelectorAll('[data-test-model]').forEach(button => {
@@ -195,6 +208,32 @@ function renderModelConfigList() {
   list.querySelectorAll('[data-remove-model]').forEach(button => {
     button.addEventListener('click', () => removeModelProfile(button.dataset.removeModel));
   });
+}
+
+function toggleModelEditor(id) {
+  modelProfiles = readProfilesFromForm();
+  if (expandedModelIds.has(id)) {
+    expandedModelIds.delete(id);
+  } else {
+    expandedModelIds.add(id);
+  }
+  renderModelConfigList();
+  renderModelSelect();
+}
+
+function isModelConfigured(profile) {
+  return Boolean(profile.name && profile.baseUrl && profile.model);
+}
+
+function modelSummary(profile) {
+  const model = profile.model || '未填写模型';
+  const reasoning = profile.reasoningEnabled ? `思考${effortLabel(profile.reasoningEffort)}` : '思考关';
+  return `${model} · ${reasoning}`;
+}
+
+function effortLabel(value) {
+  const map = { low: '低', medium: '中', high: '高' };
+  return map[value] || '中';
 }
 
 async function testModelProfile(id) {

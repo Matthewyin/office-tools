@@ -143,14 +143,14 @@ body {
 .model-config-list {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 8px;
 }
 
 .model-config {
   display: grid;
   grid-template-columns: 1fr;
-  gap: 7px;
-  padding: 10px;
+  gap: 6px;
+  padding: 9px 10px;
   background: var(--bg-elevated);
   border: 1px solid var(--border-soft);
   border-radius: var(--radius-md);
@@ -167,12 +167,41 @@ body {
   display: flex;
   align-items: center;
   gap: 6px;
+  flex-shrink: 0;
+}
+
+.model-config-heading {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
 }
 
 .model-config-title {
   font-size: 12px;
   font-weight: 650;
-  color: var(--text-secondary);
+  color: var(--text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.model-config-summary {
+  color: var(--text-muted);
+  font-size: 11px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.model-config-fields {
+  display: none;
+  grid-template-columns: 1fr;
+  gap: 7px;
+}
+
+.model-config.expanded .model-config-fields {
+  display: grid;
 }
 
 .model-option-row {
@@ -248,6 +277,10 @@ body {
   border-radius: var(--radius-sm);
   padding: 9px 10px;
   resize: none;
+}
+
+.system-prompt-input {
+  min-height: 118px;
 }
 
 .input::placeholder,
