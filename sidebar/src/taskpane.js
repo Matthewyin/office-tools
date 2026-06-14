@@ -1,4 +1,4 @@
-import { streamChat } from './llm.js';
+import { streamChat, testLLMConfig } from './llm.js';
 import {
   getSelectedText,
   countWordMatches,
@@ -162,7 +162,10 @@ function renderModelConfigList() {
     item.innerHTML = `
       <div class="model-config-header">
         <span class="model-config-title">模型 ${index + 1}</span>
-        <button class="btn btn-danger btn-sm" type="button" data-remove-model="${escapeHtml(profile.id)}">删除</button>
+        <div class="model-config-actions">
+          <button class="btn btn-secondary btn-sm" type="button" data-test-model="${escapeHtml(profile.id)}">测试</button>
+          <button class="btn btn-danger btn-sm" type="button" data-remove-model="${escapeHtml(profile.id)}">删除</button>
+        </div>
       </div>
       <input class="input" data-field="name" type="text" placeholder="显示名称，例如 GLM-5.2" value="${escapeHtml(profile.name || '')}" />
       <input class="input" data-field="baseUrl" type="text" placeholder="API Base URL" value="${escapeHtml(profile.baseUrl || '')}" />
@@ -179,13 +182,44 @@ function renderModelConfigList() {
           <option value="high" ${profile.reasoningEffort === 'high' ? 'selected' : ''}>高</option>
         </select>
       </div>
+      <p class="model-test-status" data-test-status></p>
     `;
     list.appendChild(item);
+  });
+
+  list.querySelectorAll('[data-test-model]').forEach(button => {
+    button.addEventListener('click', () => testModelProfile(button.dataset.testModel));
   });
 
   list.querySelectorAll('[data-remove-model]').forEach(button => {
     button.addEventListener('click', () => removeModelProfile(button.dataset.removeModel));
   });
+}
+
+async function testModelProfile(id) {
+  modelProfiles = readProfilesFromForm();
+  const profile = modelProfiles.find(item => item.id === id);
+  if (!profile) return;
+
+  const item = document.querySelector(`.model-config[data-id="${cssEscape(id)}"]`);
+  const status = item?.querySelector('[data-test-status]');
+  const button = item?.querySelector('[data-test-model]');
+  if (!status || !button) return;
+
+  status.textContent = '测试中...';
+  status.className = 'model-test-status';
+  button.disabled = true;
+
+  try {
+    const reply = await testLLMConfig(profile);
+    status.textContent = `连接成功：${reply.slice(0, 40)}`;
+    status.className = 'model-test-status success';
+  } catch (err) {
+    status.textContent = `连接失败：${err.message}`;
+    status.className = 'model-test-status error';
+  } finally {
+    button.disabled = false;
+  }
 }
 
 function renderModelSelect() {
@@ -593,6 +627,10 @@ function escapeHtml(text) {
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;');
+}
+
+function cssEscape(value) {
+  return window.CSS?.escape ? window.CSS.escape(value) : String(value).replace(/"/g, '\\"');
 }
 
 function showToast(msg) {

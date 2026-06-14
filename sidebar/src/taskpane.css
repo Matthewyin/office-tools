@@ -163,6 +163,12 @@ body {
   gap: 8px;
 }
 
+.model-config-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
 .model-config-title {
   font-size: 12px;
   font-weight: 650;
@@ -189,6 +195,22 @@ body {
   width: 14px;
   height: 14px;
   accent-color: var(--accent);
+}
+
+.model-test-status {
+  min-height: 16px;
+  color: var(--text-muted);
+  font-size: 12px;
+  line-height: 1.45;
+  word-break: break-word;
+}
+
+.model-test-status.success {
+  color: var(--success);
+}
+
+.model-test-status.error {
+  color: var(--error);
 }
 
 /* ==================== 表单与按钮 ==================== */
