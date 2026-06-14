@@ -263,3 +263,9 @@ demo_*.drawio
 *.gbk.csv
 toptab/output/
 toptab/input/*.drawio
+
+# 本地临时/辅助文件和其它子项目目录
+.omc/
+resourceList.zip
+resourceList/
+

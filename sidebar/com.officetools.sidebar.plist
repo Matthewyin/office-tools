@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <!-- 唯一服务标识符 -->
+  <key>Label</key>
+  <string>com.officetools.sidebar</string>
+
+  <!-- 执行的命令 -->
+  <key>ProgramArguments</key>
+  <array>
+    <string>/bin/bash</string>
+    <string>/Users/matthewyin/Coding/Officetools/sidebar/scripts/start-service.sh</string>
+  </array>
+
+  <!-- 工作目录 -->
+  <key>WorkingDirectory</key>
+  <string>/Users/matthewyin/Coding/Officetools/sidebar</string>
+
+  <!-- 登录时自动启动 -->
+  <key>RunAtLoad</key>
+  <true/>
+
+  <!-- 崩溃后自动重启 -->
+  <key>KeepAlive</key>
+  <true/>
+
+  <!-- 日志文件 -->
+  <key>StandardOutPath</key>
+  <string>/Users/matthewyin/Library/Logs/officetools-sidebar.log</string>
+  <key>StandardErrorPath</key>
+  <string>/Users/matthewyin/Library/Logs/officetools-sidebar-error.log</string>
+
+  <!-- 环境变量（确保 Vite 能找到正确的 node_modules） -->
+  <key>EnvironmentVariables</key>
+  <dict>
+    <key>PATH</key>
+    <string>/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin</string>
+    <key>HOME</key>
+    <string>/Users/matthewyin</string>
+  </dict>
+</dict>
+</plist>

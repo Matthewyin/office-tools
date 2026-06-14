@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AI 助手</title>
+  <!-- Office.js 必须从 CDN 加载，且必须在所有其他脚本之前 -->
+  <script src="https://appsforoffice.microsoft.com/lib/1/hosted/office.js"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/src/taskpane.css" />
+</head>
+<body>
+  <div id="app">
+
+    <!-- 顶部标题栏 -->
+    <header class="header">
+      <div class="header-title">
+        <span class="header-icon">⚡</span>
+        <span>AI 助手</span>
+      </div>
+      <button id="btn-settings-toggle" class="icon-btn" title="设置" aria-label="打开设置">⚙️</button>
+    </header>
+
+    <!-- 设置面板（默认折叠） -->
+    <section id="settings-panel" class="settings-panel hidden" aria-label="API 设置">
+      <div class="settings-body">
+        <label class="field-label" for="input-base-url">API Base URL</label>
+        <input id="input-base-url" type="text" class="input" placeholder="https://api.openai.com/v1" />
+
+        <label class="field-label" for="input-api-key">API Key</label>
+        <input id="input-api-key" type="password" class="input" placeholder="sk-..." />
+
+        <label class="field-label" for="input-model">Model Name</label>
+        <input id="input-model" type="text" class="input" placeholder="gpt-4o-mini" />
+
+        <button id="btn-save-settings" class="btn btn-primary">保存配置</button>
+        <p id="settings-status" class="status-text"></p>
+      </div>
+    </section>
+
+    <!-- 主交互区 -->
+    <main class="main">
+
+      <!-- 快捷操作按钮（根据宿主动态显示） -->
+      <section class="quick-actions" aria-label="快捷操作">
+        <p class="section-title">快捷操作</p>
+        <div id="quick-actions-container" class="pill-group">
+          <!-- Word 快捷操作 -->
+          <button class="pill host-word" data-action="polish" title="润色选中的文字">✨ 润色</button>
+          <button class="pill host-word" data-action="translate-en" title="将选中文字翻译成英文">🌐 译英文</button>
+          <button class="pill host-word" data-action="summarize" title="总结选中文字">📝 总结</button>
+          <!-- Excel 快捷操作 -->
+          <button class="pill host-excel" data-action="analyze-data" title="分析选中单元格数据">📊 分析数据</button>
+          <button class="pill host-excel" data-action="gen-formula" title="根据描述生成 Excel 公式">🔢 生成公式</button>
+          <button class="pill host-excel" data-action="explain-formula" title="解释选中单元格中的公式">❓ 解释公式</button>
+          <!-- PPT 快捷操作 -->
+          <button class="pill host-ppt" data-action="gen-outline" title="根据当前幻灯片内容生成大纲">📋 生成大纲</button>
+          <button class="pill host-ppt" data-action="expand-content" title="扩写选中文字为完整幻灯片内容">📖 扩写内容</button>
+        </div>
+      </section>
+
+      <!-- 自定义 Prompt 输入 -->
+      <section class="prompt-section" aria-label="自定义提问">
+        <label class="field-label" for="input-system-prompt">系统提示词（可选）</label>
+        <textarea id="input-system-prompt" class="textarea" rows="2" placeholder="例如：你是一个专业的文档润色助手，请用简洁准确的中文回答。"></textarea>
+
+        <label class="field-label" for="input-user-prompt">你的问题</label>
+        <textarea id="input-user-prompt" class="textarea" rows="3" placeholder="输入指令，或先选中文档内容再点击快捷操作..."></textarea>
+
+        <div class="btn-row">
+          <button id="btn-read-selection" class="btn btn-secondary" title="读取当前选中的内容到提示词">📎 读取选中</button>
+          <button id="btn-send" class="btn btn-primary">发送 ↵</button>
+        </div>
+      </section>
+
+      <!-- 输出区域 -->
+      <section class="output-section" aria-label="AI 回复">
+        <div class="output-header">
+          <span class="section-title">回复</span>
+          <div class="output-actions">
+            <button id="btn-insert" class="btn btn-secondary btn-sm" title="将回复插入到当前光标处" disabled>📥 插入文档</button>
+            <button id="btn-copy" class="btn btn-secondary btn-sm" title="复制回复内容" disabled>📋 复制</button>
+            <button id="btn-clear" class="btn btn-ghost btn-sm" title="清空回复">✕</button>
+          </div>
+        </div>
+        <div id="output-area" class="output-area">
+          <p class="output-placeholder">回复将在这里显示...</p>
+        </div>
+      </section>
+
+    </main>
+
+  </div>
+
+  <script type="module" src="/src/taskpane.js"></script>
+</body>
+</html>
