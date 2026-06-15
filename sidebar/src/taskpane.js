@@ -1,5 +1,17 @@
 import { completeChat, streamChat, testLLMConfig } from './llm.js';
 import {
+  buildChatContextMessages,
+  createChatMessage,
+  resetConversationContext,
+} from './conversation-context.js';
+import {
+  clearDocumentContext,
+  formatDocumentMatchesForPrompt,
+  getDocumentChunks,
+  getOrCreateDocumentContext,
+  searchDocumentContext,
+} from './document-context.js';
+import {
   getSelectedText,
   insertText,
   getWordBodyText,
@@ -18,7 +30,6 @@ let modelProfiles = [];
 let selectedModelId = '';
 let expandedModelIds = new Set();
 let lastRollback = null;
-const DOCUMENT_CHUNK_MAX_CHARS = 5000;
 const DOCUMENT_COMBINE_MAX_CHARS = 18000;
 
 // eslint-disable-next-line no-undef
@@ -385,6 +396,7 @@ async function handleSend() {
   addMessage('user', userPrompt);
   textarea.value = '';
 
+  if (handleClearContextCommand(userPrompt)) return;
   if (await handleRollbackCommand(userPrompt)) return;
 
   const handledByAction = await previewActionFromPrompt(userPrompt, true);
@@ -399,7 +411,7 @@ async function sendChatPrompt() {
   const assistantMessage = addMessage('assistant', '', { pending: true });
 
   try {
-    const fullText = await streamChat(buildRequestMessages(), (chunk) => {
+    const fullText = await streamChat(await buildRequestMessages(), (chunk) => {
       assistantMessage.content += chunk;
       renderChatMessages();
     }, getSelectedModelConfig());
@@ -417,24 +429,34 @@ async function sendChatPrompt() {
   }
 }
 
-function buildRequestMessages() {
+async function buildRequestMessages() {
   const systemPrompt = getSystemPrompt();
-  return [
-    ...(systemPrompt ? [{ role: 'system', content: systemPrompt }] : []),
-    ...chatMessages
-      .filter(message => !message.pending && !message.error && message.content)
-      .map(message => ({ role: message.role, content: message.content })),
-  ];
+  return await buildChatContextMessages(chatMessages, systemPrompt, summarizeConversationMessages);
+}
+
+async function summarizeConversationMessages(previousSummary, transcript) {
+  return await completeChat([
+    {
+      role: 'system',
+      content: [
+        '你是对话上下文压缩器。',
+        '请把较早对话压缩成简洁中文摘要，只保留用户目标、关键约束、已确认结论和待办。',
+        '不要加入新信息，不要保留大段文档正文或模型长回答。',
+      ].join('\n'),
+    },
+    {
+      role: 'user',
+      content: [
+        previousSummary ? `已有摘要：\n${previousSummary}\n` : '',
+        '需要压缩的新对话：',
+        transcript,
+      ].join('\n'),
+    },
+  ], getSelectedModelConfig());
 }
 
 function addMessage(role, content, options = {}) {
-  const message = {
-    id: createId(),
-    role,
-    content,
-    pending: Boolean(options.pending),
-    error: Boolean(options.error),
-  };
+  const message = createChatMessage(role, content, options);
   chatMessages.push(message);
   renderChatMessages();
   return message;
@@ -608,6 +630,11 @@ async function previewActionFromPrompt(commandText, fromChat) {
       await processWholeWordDocument('review', commandText);
       return true;
     }
+
+    if (isWordDocumentQuestionCommand(commandText)) {
+      await answerWordDocumentQuestion(commandText);
+      return true;
+    }
   }
 
   if (currentHost === 'Excel' && isExcelAnalysisSheetCommand(commandText)) {
@@ -634,11 +661,13 @@ async function planDocumentAction(commandText) {
           'word_insert：在 Word 当前光标或选区写入新内容，必须给出 instruction。',
           'word_summarize_document：总结或介绍 Word 整篇文档，适用于总结全文、总结这篇文章、介绍这首词、分析当前文档、提炼大纲，必须给出 instruction。',
           'word_review_document：审稿 Word 整篇文档，适用于检查全文问题、错别字、逻辑问题、结构反馈，必须给出 instruction。',
+          'word_document_qa：基于 Word 文档回答具体问题，适用于询问文中某处、某个概念、背景、原因、人物、观点，必须给出 question。',
           'excel_analysis_sheet：读取 Excel 当前选区并创建分析工作表，必须给出 instruction。',
           '输出格式：{"action":"chat"}、{"action":"word_replace","searchText":"A","replacementText":"B"} 或 {"action":"word_rewrite_selection","instruction":"润色当前选区"}。',
           '不要把“文档中的”“正文里的”等位置描述放入 searchText。',
           '用户要求润色、缩短、扩写、改正式、翻译当前内容，且 hasSelection 为 true 时，优先使用 word_rewrite_selection。',
           '用户明确要求总结、概括、提炼大纲、审稿、检查全文或反馈整篇文档时，使用对应的整篇文档 action，不要使用 chat。',
+          '用户基于当前文档追问具体信息时，使用 word_document_qa，不要使用普通 chat。',
         ].join('\n'),
       },
       {
@@ -709,6 +738,11 @@ async function executePlannedAction(action, commandText, fromChat) {
     return true;
   }
 
+  if (currentHost === 'Word' && action.action === 'word_document_qa') {
+    await answerWordDocumentQuestion(action.question || commandText);
+    return true;
+  }
+
   if (currentHost === 'Excel' && action.action === 'excel_analysis_sheet') {
     await previewExcelAnalysisToSheet(action.instruction || commandText, fromChat);
     return true;
@@ -774,6 +808,14 @@ function validatePlannedAction(action) {
     action.instruction = action.instruction.trim();
     return { valid: true };
   }
+  if (action.action === 'word_document_qa') {
+    if (currentHost !== 'Word') return { valid: false, reason: '当前不是 Word' };
+    if (typeof action.question !== 'string' || !action.question.trim()) {
+      return { valid: false, reason: '缺少 question' };
+    }
+    action.question = action.question.trim();
+    return { valid: true };
+  }
   if (action.action === 'excel_analysis_sheet') {
     if (currentHost !== 'Excel') return { valid: false, reason: '当前不是 Excel' };
     if (typeof action.instruction !== 'string' || !action.instruction.trim()) {
@@ -809,6 +851,7 @@ async function generateAndInsertWordContent(commandText) {
 
     const beforeOoxml = await getWordBodyOoxmlSnapshot();
     await insertText(currentHost, assistantMessage.content);
+    clearDocumentContext();
     lastRollback = {
       type: 'word-body-ooxml',
       label: '撤销写入文档',
@@ -831,14 +874,10 @@ async function processWholeWordDocument(mode, instruction) {
   const assistantMessage = addMessage('assistant', '正在读取 Word 正文...', { pending: true });
 
   try {
-    const bodyText = (await getWordBodyText()).trim();
-    if (!bodyText) {
-      throw new Error('当前 Word 文档没有可读取的正文内容。');
-    }
-
-    const chunks = splitDocumentText(bodyText);
+    const documentContext = await getOrCreateDocumentContext(getWordBodyText);
+    const chunks = getDocumentChunks(documentContext);
     const chunkResults = [];
-    assistantMessage.content = `已读取正文，约 ${bodyText.length} 字，拆分为 ${chunks.length} 段处理。`;
+    assistantMessage.content = `已建立文档上下文，约 ${documentContext.charCount} 字，拆分为 ${chunks.length} 段处理。`;
     renderChatMessages();
 
     for (let index = 0; index < chunks.length; index += 1) {
@@ -944,37 +983,76 @@ async function compactDocumentResultsIfNeeded(results) {
   return compacted;
 }
 
-function splitDocumentText(text) {
-  const normalized = String(text || '').replace(/\r\n/g, '\n').trim();
-  if (!normalized) return [];
+async function answerWordDocumentQuestion(question) {
+  const sendBtn = document.getElementById('btn-send');
+  sendBtn.disabled = true;
+  const assistantMessage = addMessage('assistant', '正在检索 Word 文档上下文...', { pending: true });
 
-  const paragraphs = normalized.split(/\n{2,}/).map(item => item.trim()).filter(Boolean);
-  const chunks = [];
-  let current = '';
+  try {
+    const documentContext = await getOrCreateDocumentContext(getWordBodyText);
+    const { terms, matches } = searchDocumentContext(documentContext, question, { limit: 5 });
+    const relatedText = formatDocumentMatchesForPrompt(matches);
 
-  for (const paragraph of paragraphs.length ? paragraphs : [normalized]) {
-    if (paragraph.length > DOCUMENT_CHUNK_MAX_CHARS) {
-      if (current) {
-        chunks.push(current);
-        current = '';
-      }
-      for (let start = 0; start < paragraph.length; start += DOCUMENT_CHUNK_MAX_CHARS) {
-        chunks.push(paragraph.slice(start, start + DOCUMENT_CHUNK_MAX_CHARS));
-      }
-      continue;
-    }
+    assistantMessage.content = `已检索到 ${matches.length} 个相关段落，正在回答...`;
+    renderChatMessages();
 
-    const next = current ? `${current}\n\n${paragraph}` : paragraph;
-    if (next.length > DOCUMENT_CHUNK_MAX_CHARS && current) {
-      chunks.push(current);
-      current = paragraph;
-    } else {
-      current = next;
-    }
+    const fullText = await streamChat([
+      {
+        role: 'system',
+        content: [
+          '你是 Word 文档问答助手。',
+          '请只基于给定的相关段落回答，不要编造文档中没有的信息。',
+          '如果相关段落证据不足，请明确说明“不足以从当前相关段落判断”。',
+          '回答要简洁，并在必要时指出依据来自哪些分段。',
+        ].join('\n'),
+      },
+      {
+        role: 'user',
+        content: [
+          `用户问题：${question}`,
+          `文档规模：约 ${documentContext.charCount} 字，${documentContext.chunks.length} 个分段`,
+          terms.length ? `检索词：${terms.slice(0, 12).join('、')}` : '检索词：无',
+          '',
+          '相关段落：',
+          relatedText,
+        ].join('\n'),
+      },
+    ], (chunk) => {
+      assistantMessage.content += chunk;
+      renderChatMessages();
+    }, getSelectedModelConfig());
+
+    assistantMessage.content = [
+      `已基于 ${matches.length} 个相关段落回答。`,
+      '',
+      fullText || assistantMessage.content.replace(/^已检索到.*?正在回答\.\.\./, '').trim(),
+    ].join('\n');
+    assistantMessage.pending = false;
+    renderChatMessages();
+  } catch (err) {
+    assistantMessage.content = `文档问答失败: ${err.message}`;
+    assistantMessage.pending = false;
+    assistantMessage.error = true;
+    renderChatMessages();
+  } finally {
+    sendBtn.disabled = false;
+  }
+}
+
+function handleClearContextCommand(input) {
+  if (!/(清空|清除|重置)(上下文|聊天记录|对话|文档缓存)/.test(input)) {
+    return false;
   }
 
-  if (current) chunks.push(current);
-  return chunks;
+  chatMessages = [];
+  pendingAction = null;
+  lastRollback = null;
+  resetConversationContext();
+  clearDocumentContext();
+  clearPendingAction();
+  renderChatMessages();
+  showToast('已清空上下文');
+  return true;
 }
 
 async function handleRollbackCommand(input) {
@@ -992,6 +1070,7 @@ async function handleRollbackCommand(input) {
 
   try {
     await restoreWordBodyOoxmlSnapshot(lastRollback.snapshot);
+    clearDocumentContext();
     addMessage('assistant', `已执行：${lastRollback.label}`);
     lastRollback = null;
     showToast('已撤销上次操作');
@@ -1166,6 +1245,7 @@ async function confirmPendingAction() {
     if (action.type === 'word-replace') {
       const beforeOoxml = await getWordBodyOoxmlSnapshot();
       const replaced = await replaceWordMatches(action.searchText, action.replacementText);
+      clearDocumentContext();
       lastRollback = {
         type: 'word-body-ooxml',
         label: `撤销替换：${action.searchText} → ${action.replacementText}`,
@@ -1187,6 +1267,7 @@ async function confirmPendingAction() {
     if (action.type === 'word-selection-rewrite') {
       const beforeOoxml = await getWordBodyOoxmlSnapshot();
       const result = await replaceWordSelection(action.replacementText);
+      clearDocumentContext();
       lastRollback = {
         type: 'word-body-ooxml',
         label: '撤销选区改写',
@@ -1275,6 +1356,13 @@ function isWordDocumentSummaryCommand(input) {
 
 function isWordDocumentReviewCommand(input) {
   return /(审稿|检查|校对|反馈|问题|错别字|病句|逻辑|结构)/.test(input) && /(全文|整篇|整份|文档|文章|这篇|当前内容)/.test(input);
+}
+
+function isWordDocumentQuestionCommand(input) {
+  if (!/(文中|文档|文章|这篇|这首|上文|前文|里面|其中|作者|背景|观点|原因|依据|哪里|哪一段)/.test(input)) {
+    return false;
+  }
+  return /(什么|为什么|为何|怎么|如何|是否|有没有|哪里|哪一段|介绍|解释|说明|含义|意思|背景|观点|原因|依据)/.test(input);
 }
 
 function parseReplaceCommand(input) {
