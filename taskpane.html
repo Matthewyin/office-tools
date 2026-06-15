@@ -6,7 +6,7 @@
   <title>AI 助手</title>
   <!-- Office.js 必须从 CDN 加载，且必须在所有其他脚本之前 -->
   <script src="https://appsforoffice.microsoft.com/lib/1/hosted/office.js"></script>
-  <script type="module" crossorigin src="/office-tools/assets/taskpane-D7tZIkNr.js"></script>
+  <script type="module" crossorigin src="/office-tools/assets/taskpane-BFB-uHol.js"></script>
   <link rel="stylesheet" crossorigin href="/office-tools/assets/taskpane-BrGczk_H.css">
 </head>
 <body>
@@ -113,7 +113,7 @@
     <section id="settings-panel" class="settings-panel hidden" aria-label="API 设置">
       <div class="settings-body">
         <label class="field-label" for="input-system-prompt">系统提示词</label>
-        <textarea id="input-system-prompt" class="textarea system-prompt-input" rows="5" placeholder="例如：你是一个专业的文档润色助手，请用简洁准确的中文回答。"></textarea>
+        <textarea id="input-system-prompt" class="textarea system-prompt-input" rows="5" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="例如：你是一个专业的文档润色助手，请用简洁准确的中文回答。"></textarea>
 
         <div class="settings-row">
           <span class="field-label">LLM 配置</span>
@@ -145,7 +145,7 @@
       </section>
 
       <section class="composer" aria-label="聊天输入栏">
-        <textarea id="input-user-prompt" class="composer-input" rows="3" placeholder="输入问题，或输入“找到文档中的XX，替换为YY”..."></textarea>
+        <textarea id="input-user-prompt" class="composer-input" rows="3" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="输入问题，或输入“找到文档中的XX，替换为YY”..."></textarea>
         <div class="composer-toolbar">
           <div class="composer-tools">
             <button id="btn-read-selection" class="icon-tool" title="读取当前 Word/Excel/PPT 选中内容到输入框" aria-label="读取当前 Word、Excel 或 PowerPoint 选中内容到输入框">
