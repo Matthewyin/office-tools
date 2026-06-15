@@ -69,6 +69,24 @@ export async function replaceWordMatches(searchText, replacementText) {
   });
 }
 
+export async function replaceWordSelection(replacementText) {
+  // eslint-disable-next-line no-undef
+  return Word.run(async (context) => {
+    const selection = context.document.getSelection();
+    selection.load('text');
+    await context.sync();
+
+    if (!selection.text.trim()) {
+      throw new Error('请先选中要改写的 Word 文本。');
+    }
+
+    // eslint-disable-next-line no-undef
+    selection.insertText(replacementText, Word.InsertLocation.replace);
+    await context.sync();
+    return { scope: '选区' };
+  });
+}
+
 export async function getWordBodyOoxmlSnapshot() {
   // eslint-disable-next-line no-undef
   return Word.run(async (context) => {

@@ -5,6 +5,7 @@ import {
   getWordBodyOoxmlSnapshot,
   previewWordMatches,
   replaceWordMatches,
+  replaceWordSelection,
   restoreWordBodyOoxmlSnapshot,
   createExcelAnalysisSheet,
 } from './office-actions.js';
@@ -490,6 +491,7 @@ async function previewActionFromPrompt(commandText, fromChat) {
 
 async function planDocumentAction(commandText) {
   try {
+    const selectionContext = await getPlannerSelectionContext();
     const responseText = await completeChat([
       {
         role: 'system',
@@ -499,10 +501,12 @@ async function planDocumentAction(commandText) {
           '可用 action：',
           'chat：普通聊天或无法确定操作。',
           'word_replace：替换 Word 正文中的文本，必须给出 searchText 和 replacementText。',
+          'word_rewrite_selection：改写 Word 当前选区，适用于润色、缩短、扩写、改正式、翻译等，必须给出 instruction。',
           'word_insert：在 Word 当前光标或选区写入新内容，必须给出 instruction。',
           'excel_analysis_sheet：读取 Excel 当前选区并创建分析工作表，必须给出 instruction。',
-          '输出格式：{"action":"chat"} 或 {"action":"word_replace","searchText":"A","replacementText":"B"}。',
+          '输出格式：{"action":"chat"}、{"action":"word_replace","searchText":"A","replacementText":"B"} 或 {"action":"word_rewrite_selection","instruction":"润色当前选区"}。',
           '不要把“文档中的”“正文里的”等位置描述放入 searchText。',
+          '用户要求润色、缩短、扩写、改正式、翻译当前内容，且 hasSelection 为 true 时，优先使用 word_rewrite_selection。',
         ].join('\n'),
       },
       {
@@ -510,6 +514,7 @@ async function planDocumentAction(commandText) {
         content: JSON.stringify({
           host: currentHost,
           input: commandText,
+          ...selectionContext,
         }),
       },
     ], getSelectedModelConfig());
@@ -526,6 +531,21 @@ async function planDocumentAction(commandText) {
   }
 }
 
+async function getPlannerSelectionContext() {
+  if (currentHost !== 'Word') return {};
+
+  try {
+    const selectionText = await getSelectedText(currentHost);
+    const trimmed = selectionText.trim();
+    return {
+      hasSelection: Boolean(trimmed),
+      selectionSample: trimmed.slice(0, 200),
+    };
+  } catch {
+    return { hasSelection: false };
+  }
+}
+
 async function executePlannedAction(action, commandText, fromChat) {
   if (action.action === 'chat') return false;
 
@@ -534,6 +554,11 @@ async function executePlannedAction(action, commandText, fromChat) {
       searchText: action.searchText,
       replacementText: action.replacementText,
     }, fromChat);
+    return true;
+  }
+
+  if (currentHost === 'Word' && action.action === 'word_rewrite_selection') {
+    await previewWordSelectionRewrite(action.instruction || commandText, fromChat);
     return true;
   }
 
@@ -581,6 +606,14 @@ function validatePlannedAction(action) {
     }
     action.searchText = action.searchText.trim();
     action.replacementText = action.replacementText.trim();
+    return { valid: true };
+  }
+  if (action.action === 'word_rewrite_selection') {
+    if (currentHost !== 'Word') return { valid: false, reason: '当前不是 Word' };
+    if (typeof action.instruction !== 'string' || !action.instruction.trim()) {
+      return { valid: false, reason: '缺少 instruction' };
+    }
+    action.instruction = action.instruction.trim();
     return { valid: true };
   }
   if (action.action === 'word_insert') {
@@ -703,6 +736,87 @@ async function previewWordReplace(parsed, fromChat) {
   }
 }
 
+async function previewWordSelectionRewrite(instruction, fromChat) {
+  const previewBtn = document.getElementById('btn-preview-action');
+  previewBtn.disabled = true;
+  const assistantMessage = fromChat
+    ? addMessage('assistant', '正在生成 Word 选区改写预览...', { pending: true })
+    : null;
+
+  try {
+    const selectionText = await getSelectedText(currentHost);
+    if (!selectionText.trim()) {
+      if (assistantMessage) {
+        assistantMessage.content = '请先在 Word 中选中要改写的文本。';
+        assistantMessage.pending = false;
+        assistantMessage.error = true;
+        renderChatMessages();
+      } else {
+        addMessage('assistant', '请先在 Word 中选中要改写的文本。', { error: true });
+      }
+      return;
+    }
+
+    const rewrittenText = await completeChat([
+      {
+        role: 'system',
+        content: [
+          '你是专业的 Word 文档改写助手。',
+          '只输出改写后的正文，不要输出解释、标题、引号或寒暄。',
+          '保持原文事实和核心含义，不要虚构信息。',
+          '除非用户明确要求，否则保持原文语言不变。',
+        ].join('\n'),
+      },
+      {
+        role: 'user',
+        content: [
+          `改写要求：${instruction}`,
+          '',
+          '当前选区：',
+          selectionText,
+        ].join('\n'),
+      },
+    ], getSelectedModelConfig());
+
+    if (!rewrittenText.trim()) {
+      throw new Error('模型没有返回可写入的文本。');
+    }
+
+    pendingAction = {
+      type: 'word-selection-rewrite',
+      instruction,
+      originalText: selectionText,
+      replacementText: rewrittenText.trim(),
+    };
+
+    document.getElementById('btn-confirm-action').disabled = false;
+    showActionPreview([
+      'Word 选区改写',
+      `改写要求：${instruction}`,
+      '作用范围：当前选区',
+      '',
+      ...formatRewritePreview(selectionText, rewrittenText.trim()),
+    ].join('\n'));
+
+    if (assistantMessage) {
+      assistantMessage.content = '已生成 Word 选区改写预览，请确认后执行。';
+      assistantMessage.pending = false;
+      renderChatMessages();
+    }
+  } catch (err) {
+    if (assistantMessage) {
+      assistantMessage.content = `预览失败: ${err.message}`;
+      assistantMessage.pending = false;
+      assistantMessage.error = true;
+      renderChatMessages();
+    } else {
+      addMessage('assistant', `预览失败: ${err.message}`, { error: true });
+    }
+  } finally {
+    previewBtn.disabled = false;
+  }
+}
+
 async function previewExcelAnalysisToSheet(commandText, fromChat) {
   let selectionText = '';
   try {
@@ -766,6 +880,25 @@ async function confirmPendingAction() {
         '如需恢复，可输入“撤销上次操作”。',
       ].join('\n'));
       showToast('替换完成');
+    }
+
+    if (action.type === 'word-selection-rewrite') {
+      const beforeOoxml = await getWordBodyOoxmlSnapshot();
+      const result = await replaceWordSelection(action.replacementText);
+      lastRollback = {
+        type: 'word-body-ooxml',
+        label: '撤销选区改写',
+        snapshot: beforeOoxml,
+      };
+      addMessage('assistant', [
+        '已完成 Word 选区改写。',
+        '',
+        `改写要求：${action.instruction}`,
+        `作用范围：${result.scope}`,
+        '',
+        '如需恢复，可输入“撤销上次操作”。',
+      ].join('\n'));
+      showToast('改写完成');
     }
 
     if (action.type === 'excel-analysis-to-sheet') {
@@ -867,6 +1000,20 @@ function formatDiffExamples(examples) {
       `   新文：${example.after || '（空文本）'}`,
     ]),
   ];
+}
+
+function formatRewritePreview(originalText, rewrittenText) {
+  return [
+    '预览：',
+    `原文：${clipPreviewText(originalText)}`,
+    `新文：${clipPreviewText(rewrittenText)}`,
+  ];
+}
+
+function clipPreviewText(text) {
+  const normalized = String(text || '').trim();
+  if (normalized.length <= 500) return normalized;
+  return `${normalized.slice(0, 500)}...`;
 }
 
 // ==================== 工具函数 ====================
