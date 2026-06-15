@@ -183,10 +183,22 @@ function renderModelConfigList() {
         </div>
       </div>
       <div class="model-config-fields">
-        <input class="input" data-field="name" type="text" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="显示名称，例如 GLM-5.2" value="${escapeHtml(profile.name || '')}" />
-        <input class="input" data-field="baseUrl" type="text" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="API Base URL" value="${escapeHtml(profile.baseUrl || '')}" />
-        <input class="input" data-field="apiKey" type="password" autocomplete="new-password" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="API Key" value="${escapeHtml(profile.apiKey || '')}" />
-        <input class="input" data-field="model" type="text" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="Model Name" value="${escapeHtml(profile.model || '')}" />
+        <label class="config-field">
+          <span>显示名称</span>
+          <input class="input" data-field="name" type="text" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="例如 GLM-5.2" value="${escapeHtml(profile.name || '')}" />
+        </label>
+        <label class="config-field">
+          <span>API Base URL</span>
+          <input class="input" data-field="baseUrl" type="text" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="https://api.openai.com/v1" value="${escapeHtml(profile.baseUrl || '')}" />
+        </label>
+        <label class="config-field">
+          <span>API Key</span>
+          <input class="input" data-field="apiKey" type="password" autocomplete="new-password" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="仅保存在本机浏览器存储" value="${escapeHtml(profile.apiKey || '')}" />
+        </label>
+        <label class="config-field">
+          <span>Model Name</span>
+          <input class="input" data-field="model" type="text" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="例如 gpt-4o-mini" value="${escapeHtml(profile.model || '')}" />
+        </label>
         <div class="model-option-row">
           <label class="checkbox-row">
             <input data-field="reasoningEnabled" type="checkbox" ${profile.reasoningEnabled ? 'checked' : ''} />
@@ -437,9 +449,7 @@ function renderChatMessages() {
 
   list.innerHTML = chatMessages.map(message => {
     const cursor = message.pending ? '<span class="cursor-blink">▋</span>' : '';
-    const content = message.content
-      ? escapeHtml(message.content).replace(/\n/g, '<br>')
-      : '';
+    const content = renderMessageContent(message);
     const errorClass = message.error ? ' message-error' : '';
     return `
       <div class="message message-${message.role}${errorClass}">
@@ -450,6 +460,112 @@ function renderChatMessages() {
 
   const chatWindow = document.getElementById('chat-window');
   chatWindow.scrollTop = chatWindow.scrollHeight;
+}
+
+function renderMessageContent(message) {
+  if (!message.content) return '';
+  if (message.role !== 'assistant' || message.error) {
+    return escapeHtml(message.content).replace(/\n/g, '<br>');
+  }
+  return renderMarkdown(message.content);
+}
+
+function renderMarkdown(text) {
+  const lines = String(text || '').replace(/\r\n/g, '\n').split('\n');
+  const html = [];
+  let paragraph = [];
+  let listType = null;
+  let inCode = false;
+  let codeLines = [];
+
+  const flushParagraph = () => {
+    if (!paragraph.length) return;
+    html.push(`<p>${renderInlineMarkdown(paragraph.join(' '))}</p>`);
+    paragraph = [];
+  };
+
+  const closeList = () => {
+    if (!listType) return;
+    html.push(`</${listType}>`);
+    listType = null;
+  };
+
+  for (const line of lines) {
+    if (/^```/.test(line.trim())) {
+      if (inCode) {
+        html.push(`<pre><code>${escapeHtml(codeLines.join('\n'))}</code></pre>`);
+        codeLines = [];
+        inCode = false;
+      } else {
+        flushParagraph();
+        closeList();
+        inCode = true;
+      }
+      continue;
+    }
+
+    if (inCode) {
+      codeLines.push(line);
+      continue;
+    }
+
+    const trimmed = line.trim();
+    if (!trimmed) {
+      flushParagraph();
+      closeList();
+      continue;
+    }
+
+    const heading = trimmed.match(/^(#{1,4})\s+(.+)$/);
+    if (heading) {
+      flushParagraph();
+      closeList();
+      const level = Math.min(heading[1].length + 2, 5);
+      html.push(`<h${level}>${renderInlineMarkdown(heading[2])}</h${level}>`);
+      continue;
+    }
+
+    const unordered = trimmed.match(/^[-*]\s+(.+)$/);
+    if (unordered) {
+      flushParagraph();
+      if (listType !== 'ul') {
+        closeList();
+        listType = 'ul';
+        html.push('<ul>');
+      }
+      html.push(`<li>${renderInlineMarkdown(unordered[1])}</li>`);
+      continue;
+    }
+
+    const ordered = trimmed.match(/^\d+[.)]\s+(.+)$/);
+    if (ordered) {
+      flushParagraph();
+      if (listType !== 'ol') {
+        closeList();
+        listType = 'ol';
+        html.push('<ol>');
+      }
+      html.push(`<li>${renderInlineMarkdown(ordered[1])}</li>`);
+      continue;
+    }
+
+    closeList();
+    paragraph.push(trimmed);
+  }
+
+  if (inCode) {
+    html.push(`<pre><code>${escapeHtml(codeLines.join('\n'))}</code></pre>`);
+  }
+  flushParagraph();
+  closeList();
+  return html.join('');
+}
+
+function renderInlineMarkdown(text) {
+  return escapeHtml(text)
+    .replace(/`([^`]+)`/g, '<code>$1</code>')
+    .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
+    .replace(/\*([^*]+)\*/g, '<em>$1</em>');
 }
 
 // ==================== 文档操作预览 ====================
