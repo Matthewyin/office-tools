@@ -51,6 +51,37 @@ export function resetConversationContext() {
   nextMessageSeq = 1;
 }
 
+export function restoreConversationContext(state = {}) {
+  summarizedSeq = Number(state.summarizedSeq) || 0;
+  conversationSummary = String(state.conversationSummary || '');
+  nextMessageSeq = Number(state.nextMessageSeq) || 1;
+}
+
+export function getConversationContextState() {
+  return {
+    nextMessageSeq,
+    summarizedSeq,
+    conversationSummary,
+  };
+}
+
+export function getConversationContextStatus(chatMessages = []) {
+  const eligibleCount = eligibleMessages(chatMessages).length;
+  const recentCount = eligibleMessages(chatMessages)
+    .filter(message => message.seq > summarizedSeq)
+    .slice(-RECENT_MESSAGE_COUNT)
+    .length;
+
+  return {
+    compressed: Boolean(conversationSummary),
+    eligibleCount,
+    recentCount,
+    summarizedSeq,
+    summaryChars: conversationSummary.length,
+    historyCharBudget: HISTORY_CHAR_BUDGET,
+  };
+}
+
 async function summarizeOldMessagesIfNeeded(chatMessages, summarizeMessages) {
   const candidates = eligibleMessages(chatMessages).filter(message => message.seq > summarizedSeq);
   const unsummarizedChars = candidates.reduce((total, message) => total + String(message.content || '').length, 0);

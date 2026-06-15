@@ -2,11 +2,15 @@ import { completeChat, streamChat, testLLMConfig } from './llm.js';
 import {
   buildChatContextMessages,
   createChatMessage,
+  getConversationContextState,
+  getConversationContextStatus,
+  restoreConversationContext,
   resetConversationContext,
 } from './conversation-context.js';
 import {
   clearDocumentContext,
   formatDocumentMatchesForPrompt,
+  getDocumentContextStatus,
   getDocumentChunks,
   getOrCreateDocumentContext,
   searchDocumentContext,
@@ -30,14 +34,18 @@ let modelProfiles = [];
 let selectedModelId = '';
 let expandedModelIds = new Set();
 let lastRollback = null;
+let lastDocumentEvidence = [];
 const DOCUMENT_COMBINE_MAX_CHARS = 18000;
+const CHAT_STATE_KEY = 'taskpane_chat_state_v1';
 
 // eslint-disable-next-line no-undef
 Office.onReady((info) => {
   currentHost = info.host;
   initUI();
   loadSettings();
+  loadChatState();
   renderChatMessages();
+  renderContextStatus();
 });
 
 function initUI() {
@@ -72,6 +80,7 @@ function loadSettings() {
 
   modelProfiles = loadModelProfiles();
   selectedModelId = localStorage.getItem('llm_selected_profile') || modelProfiles[0]?.id || '';
+  if (selectedModelId) expandedModelIds.add(selectedModelId);
   renderModelConfigList();
   renderModelSelect();
 }
@@ -179,12 +188,13 @@ function renderModelConfigList() {
   modelProfiles.forEach((profile, index) => {
     const expanded = expandedModelIds.has(profile.id) || !isModelConfigured(profile);
     const item = document.createElement('section');
-    item.className = `model-config${expanded ? ' expanded' : ''}`;
+    const selected = profile.id === selectedModelId;
+    item.className = `model-config${expanded ? ' expanded' : ''}${selected ? ' selected' : ''}`;
     item.dataset.id = profile.id;
     item.innerHTML = `
       <div class="model-config-header">
         <div class="model-config-heading">
-          <span class="model-config-title">${escapeHtml(profile.name || `模型 ${index + 1}`)}</span>
+          <span class="model-config-title">${escapeHtml(profile.name || `模型 ${index + 1}`)}${selected ? '<em>当前</em>' : ''}</span>
           <span class="model-config-summary">${escapeHtml(modelSummary(profile))}</span>
         </div>
         <div class="model-config-actions">
@@ -419,11 +429,13 @@ async function sendChatPrompt() {
     assistantMessage.content = fullText || assistantMessage.content;
     assistantMessage.pending = false;
     renderChatMessages();
+    saveChatState();
   } catch (err) {
     assistantMessage.content = `错误: ${err.message}`;
     assistantMessage.pending = false;
     assistantMessage.error = true;
     renderChatMessages();
+    saveChatState();
   } finally {
     sendBtn.disabled = false;
   }
@@ -431,7 +443,10 @@ async function sendChatPrompt() {
 
 async function buildRequestMessages() {
   const systemPrompt = getSystemPrompt();
-  return await buildChatContextMessages(chatMessages, systemPrompt, summarizeConversationMessages);
+  const messages = await buildChatContextMessages(chatMessages, systemPrompt, summarizeConversationMessages);
+  saveChatState();
+  renderContextStatus();
+  return messages;
 }
 
 async function summarizeConversationMessages(previousSummary, transcript) {
@@ -459,6 +474,7 @@ function addMessage(role, content, options = {}) {
   const message = createChatMessage(role, content, options);
   chatMessages.push(message);
   renderChatMessages();
+  saveChatState();
   return message;
 }
 
@@ -466,6 +482,7 @@ function renderChatMessages() {
   const list = document.getElementById('chat-messages');
   if (chatMessages.length === 0) {
     list.innerHTML = '<div class="empty-state">选择模型后开始聊天。可读取文档选区，也可以输入查找替换指令。</div>';
+    renderContextStatus();
     return;
   }
 
@@ -482,6 +499,7 @@ function renderChatMessages() {
 
   const chatWindow = document.getElementById('chat-window');
   chatWindow.scrollTop = chatWindow.scrollHeight;
+  renderContextStatus();
 }
 
 function renderMessageContent(message) {
@@ -490,6 +508,72 @@ function renderMessageContent(message) {
     return escapeHtml(message.content).replace(/\n/g, '<br>');
   }
   return renderMarkdown(message.content);
+}
+
+function loadChatState() {
+  const saved = readJson(CHAT_STATE_KEY);
+  if (!saved || !Array.isArray(saved.messages)) return;
+
+  chatMessages = saved.messages
+    .filter(message => message?.role && message?.content)
+    .map((message, index) => ({
+      id: message.id || createId(),
+      seq: Number(message.seq) || index + 1,
+      role: message.role === 'assistant' ? 'assistant' : 'user',
+      content: String(message.content),
+      pending: false,
+      error: false,
+    }));
+
+  const maxSeq = chatMessages.reduce((max, message) => Math.max(max, message.seq || 0), 0);
+  restoreConversationContext({
+    ...saved.context,
+    nextMessageSeq: Math.max(Number(saved.context?.nextMessageSeq) || 1, maxSeq + 1),
+  });
+}
+
+function saveChatState() {
+  const stableMessages = chatMessages
+    .filter(message => !message.pending && !message.error && message.content)
+    .map(message => ({
+      id: message.id,
+      seq: message.seq,
+      role: message.role,
+      content: message.content,
+    }));
+
+  localStorage.setItem(CHAT_STATE_KEY, JSON.stringify({
+    messages: stableMessages,
+    context: getConversationContextState(),
+  }));
+}
+
+function clearSavedChatState() {
+  localStorage.removeItem(CHAT_STATE_KEY);
+}
+
+function renderContextStatus() {
+  const chatEl = document.getElementById('context-status-chat');
+  const docEl = document.getElementById('context-status-doc');
+  const evidenceEl = document.getElementById('context-status-evidence');
+  if (!chatEl || !docEl || !evidenceEl) return;
+
+  const chatStatus = getConversationContextStatus(chatMessages);
+  chatEl.textContent = chatStatus.compressed
+    ? `对话：已压缩，保留最近 ${chatStatus.recentCount} 条`
+    : `对话：短历史 ${chatStatus.recentCount} 条`;
+
+  const docStatus = getDocumentContextStatus();
+  docEl.textContent = docStatus.ready
+    ? `文档：${docStatus.chunkCount} 段 / 约 ${docStatus.charCount} 字`
+    : '文档：未索引';
+
+  evidenceEl.textContent = lastDocumentEvidence.length
+    ? `段落：${lastDocumentEvidence.map(item => item.index + 1).join('、')}`
+    : '段落：未使用';
+  evidenceEl.title = lastDocumentEvidence.length
+    ? lastDocumentEvidence.map(item => `分段 ${item.index + 1}${item.heading ? `：${item.heading}` : ''}`).join('\n')
+    : '';
 }
 
 function renderMarkdown(text) {
@@ -852,6 +936,8 @@ async function generateAndInsertWordContent(commandText) {
     const beforeOoxml = await getWordBodyOoxmlSnapshot();
     await insertText(currentHost, assistantMessage.content);
     clearDocumentContext();
+    lastDocumentEvidence = [];
+    renderContextStatus();
     lastRollback = {
       type: 'word-body-ooxml',
       label: '撤销写入文档',
@@ -864,6 +950,7 @@ async function generateAndInsertWordContent(commandText) {
     assistantMessage.pending = false;
     assistantMessage.error = true;
     renderChatMessages();
+    saveChatState();
     showToast(`写入失败: ${err.message}`);
   }
 }
@@ -875,6 +962,8 @@ async function processWholeWordDocument(mode, instruction) {
 
   try {
     const documentContext = await getOrCreateDocumentContext(getWordBodyText);
+    lastDocumentEvidence = [];
+    renderContextStatus();
     const chunks = getDocumentChunks(documentContext);
     const chunkResults = [];
     assistantMessage.content = `已建立文档上下文，约 ${documentContext.charCount} 字，拆分为 ${chunks.length} 段处理。`;
@@ -894,11 +983,13 @@ async function processWholeWordDocument(mode, instruction) {
     assistantMessage.content = finalText;
     assistantMessage.pending = false;
     renderChatMessages();
+    saveChatState();
   } catch (err) {
     assistantMessage.content = `整篇文档处理失败: ${err.message}`;
     assistantMessage.pending = false;
     assistantMessage.error = true;
     renderChatMessages();
+    saveChatState();
   } finally {
     sendBtn.disabled = false;
   }
@@ -991,6 +1082,8 @@ async function answerWordDocumentQuestion(question) {
   try {
     const documentContext = await getOrCreateDocumentContext(getWordBodyText);
     const { terms, matches } = searchDocumentContext(documentContext, question, { limit: 5 });
+    lastDocumentEvidence = matches.map(match => ({ index: match.index, heading: match.heading }));
+    renderContextStatus();
     const relatedText = formatDocumentMatchesForPrompt(matches);
 
     assistantMessage.content = `已检索到 ${matches.length} 个相关段落，正在回答...`;
@@ -1029,11 +1122,13 @@ async function answerWordDocumentQuestion(question) {
     ].join('\n');
     assistantMessage.pending = false;
     renderChatMessages();
+    saveChatState();
   } catch (err) {
     assistantMessage.content = `文档问答失败: ${err.message}`;
     assistantMessage.pending = false;
     assistantMessage.error = true;
     renderChatMessages();
+    saveChatState();
   } finally {
     sendBtn.disabled = false;
   }
@@ -1049,6 +1144,8 @@ function handleClearContextCommand(input) {
   lastRollback = null;
   resetConversationContext();
   clearDocumentContext();
+  lastDocumentEvidence = [];
+  clearSavedChatState();
   clearPendingAction();
   renderChatMessages();
   showToast('已清空上下文');
@@ -1071,6 +1168,8 @@ async function handleRollbackCommand(input) {
   try {
     await restoreWordBodyOoxmlSnapshot(lastRollback.snapshot);
     clearDocumentContext();
+    lastDocumentEvidence = [];
+    renderContextStatus();
     addMessage('assistant', `已执行：${lastRollback.label}`);
     lastRollback = null;
     showToast('已撤销上次操作');
@@ -1132,6 +1231,7 @@ async function previewWordSelectionRewrite(instruction, fromChat) {
         assistantMessage.pending = false;
         assistantMessage.error = true;
         renderChatMessages();
+        saveChatState();
       } else {
         addMessage('assistant', '请先在 Word 中选中要改写的文本。', { error: true });
       }
@@ -1183,6 +1283,7 @@ async function previewWordSelectionRewrite(instruction, fromChat) {
       assistantMessage.content = '已生成 Word 选区改写预览，请确认后执行。';
       assistantMessage.pending = false;
       renderChatMessages();
+      saveChatState();
     }
   } catch (err) {
     if (assistantMessage) {
@@ -1190,6 +1291,7 @@ async function previewWordSelectionRewrite(instruction, fromChat) {
       assistantMessage.pending = false;
       assistantMessage.error = true;
       renderChatMessages();
+      saveChatState();
     } else {
       addMessage('assistant', `预览失败: ${err.message}`, { error: true });
     }
@@ -1246,6 +1348,8 @@ async function confirmPendingAction() {
       const beforeOoxml = await getWordBodyOoxmlSnapshot();
       const replaced = await replaceWordMatches(action.searchText, action.replacementText);
       clearDocumentContext();
+      lastDocumentEvidence = [];
+      renderContextStatus();
       lastRollback = {
         type: 'word-body-ooxml',
         label: `撤销替换：${action.searchText} → ${action.replacementText}`,
@@ -1268,6 +1372,8 @@ async function confirmPendingAction() {
       const beforeOoxml = await getWordBodyOoxmlSnapshot();
       const result = await replaceWordSelection(action.replacementText);
       clearDocumentContext();
+      lastDocumentEvidence = [];
+      renderContextStatus();
       lastRollback = {
         type: 'word-body-ooxml',
         label: '撤销选区改写',
@@ -1326,6 +1432,7 @@ async function generateExcelAnalysis(action) {
   assistantMessage.content = fullText || assistantMessage.content;
   assistantMessage.pending = false;
   renderChatMessages();
+  saveChatState();
   return assistantMessage.content;
 }
 

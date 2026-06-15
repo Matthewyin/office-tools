@@ -23,6 +23,24 @@ export function clearDocumentContext() {
   cachedContext = null;
 }
 
+export function getDocumentContextStatus() {
+  if (!cachedContext) {
+    return {
+      ready: false,
+      charCount: 0,
+      chunkCount: 0,
+      fingerprint: '',
+    };
+  }
+
+  return {
+    ready: true,
+    charCount: cachedContext.charCount,
+    chunkCount: cachedContext.chunks.length,
+    fingerprint: cachedContext.fingerprint,
+  };
+}
+
 export function buildDocumentContext(text, options = {}) {
   const normalized = normalizeText(text);
   const chunkMaxChars = options.chunkMaxChars || DEFAULT_CHUNK_MAX_CHARS;
