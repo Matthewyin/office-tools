@@ -6,8 +6,8 @@
   <title>AI 助手</title>
   <!-- Office.js 必须从 CDN 加载，且必须在所有其他脚本之前 -->
   <script src="https://appsforoffice.microsoft.com/lib/1/hosted/office.js"></script>
-  <script type="module" crossorigin src="/office-tools/assets/taskpane-BVKATk0h.js"></script>
-  <link rel="stylesheet" crossorigin href="/office-tools/assets/taskpane-Bfskx-vF.css">
+  <script type="module" crossorigin src="/office-tools/assets/taskpane-NiRia4ms.js"></script>
+  <link rel="stylesheet" crossorigin href="/office-tools/assets/taskpane-BQf9vAOl.css">
 </head>
 <body>
   <svg aria-hidden="true" style="position:absolute;width:0;height:0;overflow:hidden">
@@ -112,14 +112,27 @@
     <!-- 设置面板（默认折叠） -->
     <section id="settings-panel" class="settings-panel hidden" aria-label="API 设置">
       <div class="settings-body">
-        <label class="field-label" for="input-system-prompt">系统提示词</label>
-        <textarea id="input-system-prompt" class="textarea system-prompt-input" rows="5" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="例如：你是一个专业的文档润色助手，请用简洁准确的中文回答。"></textarea>
-
-        <div class="settings-row">
-          <span class="field-label">LLM 配置</span>
-          <button id="btn-add-model" class="btn btn-secondary btn-sm" type="button">添加模型</button>
+        <div class="settings-block">
+          <div class="settings-block-header">
+            <span class="field-label">助手行为</span>
+            <span class="settings-hint">影响每次普通聊天</span>
+          </div>
+          <label class="config-field" for="input-system-prompt">
+            <span>系统提示词</span>
+            <textarea id="input-system-prompt" class="textarea system-prompt-input" rows="5" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="例如：你是一个专业的文档润色助手，请用简洁准确的中文回答。"></textarea>
+          </label>
         </div>
-        <div id="model-config-list" class="model-config-list"></div>
+
+        <div class="settings-block">
+          <div class="settings-row">
+            <div>
+              <span class="field-label">模型配置</span>
+              <p class="settings-hint">支持多个 OpenAI-compatible 模型，本机保存。</p>
+            </div>
+            <button id="btn-add-model" class="btn btn-secondary btn-sm" type="button">添加模型</button>
+          </div>
+          <div id="model-config-list" class="model-config-list"></div>
+        </div>
 
         <button id="btn-save-settings" class="btn btn-primary">保存配置</button>
         <p id="settings-status" class="status-text"></p>
@@ -130,6 +143,12 @@
     <main class="chat-shell">
       <section id="chat-window" class="chat-window" aria-label="聊天窗口">
         <div id="chat-messages" class="chat-messages"></div>
+      </section>
+
+      <section id="context-status" class="context-status" aria-label="当前上下文状态">
+        <span id="context-status-chat" class="context-chip">对话：短历史</span>
+        <span id="context-status-doc" class="context-chip">文档：未索引</span>
+        <span id="context-status-evidence" class="context-chip context-chip-muted">段落：未使用</span>
       </section>
 
       <!-- 执行前确认 -->
