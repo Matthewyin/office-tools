@@ -43,10 +43,10 @@ function initUI() {
 
   document.getElementById('btn-send').addEventListener('click', handleSend);
   document.getElementById('input-user-prompt').addEventListener('keydown', (event) => {
-    if ((event.ctrlKey || event.metaKey) && event.key === 'Enter') {
-      event.preventDefault();
-      handleSend();
-    }
+    if (event.key !== 'Enter' || event.isComposing) return;
+    if (event.altKey) return;
+    event.preventDefault();
+    handleSend();
   });
 }
 
@@ -180,10 +180,10 @@ function renderModelConfigList() {
         </div>
       </div>
       <div class="model-config-fields">
-        <input class="input" data-field="name" type="text" placeholder="显示名称，例如 GLM-5.2" value="${escapeHtml(profile.name || '')}" />
-        <input class="input" data-field="baseUrl" type="text" placeholder="API Base URL" value="${escapeHtml(profile.baseUrl || '')}" />
-        <input class="input" data-field="apiKey" type="password" placeholder="API Key" value="${escapeHtml(profile.apiKey || '')}" />
-        <input class="input" data-field="model" type="text" placeholder="Model Name" value="${escapeHtml(profile.model || '')}" />
+        <input class="input" data-field="name" type="text" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="显示名称，例如 GLM-5.2" value="${escapeHtml(profile.name || '')}" />
+        <input class="input" data-field="baseUrl" type="text" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="API Base URL" value="${escapeHtml(profile.baseUrl || '')}" />
+        <input class="input" data-field="apiKey" type="password" autocomplete="new-password" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="API Key" value="${escapeHtml(profile.apiKey || '')}" />
+        <input class="input" data-field="model" type="text" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="Model Name" value="${escapeHtml(profile.model || '')}" />
         <div class="model-option-row">
           <label class="checkbox-row">
             <input data-field="reasoningEnabled" type="checkbox" ${profile.reasoningEnabled ? 'checked' : ''} />
