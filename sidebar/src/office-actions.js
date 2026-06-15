@@ -87,6 +87,16 @@ export async function replaceWordSelection(replacementText) {
   });
 }
 
+export async function getWordBodyText() {
+  // eslint-disable-next-line no-undef
+  return Word.run(async (context) => {
+    const body = context.document.body;
+    body.load('text');
+    await context.sync();
+    return body.text || '';
+  });
+}
+
 export async function getWordBodyOoxmlSnapshot() {
   // eslint-disable-next-line no-undef
   return Word.run(async (context) => {

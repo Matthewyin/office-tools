@@ -2,6 +2,7 @@ import { completeChat, streamChat, testLLMConfig } from './llm.js';
 import {
   getSelectedText,
   insertText,
+  getWordBodyText,
   getWordBodyOoxmlSnapshot,
   previewWordMatches,
   replaceWordMatches,
@@ -17,6 +18,8 @@ let modelProfiles = [];
 let selectedModelId = '';
 let expandedModelIds = new Set();
 let lastRollback = null;
+const DOCUMENT_CHUNK_MAX_CHARS = 5000;
+const DOCUMENT_COMBINE_MAX_CHARS = 18000;
 
 // eslint-disable-next-line no-undef
 Office.onReady((info) => {
@@ -479,6 +482,16 @@ async function previewActionFromPrompt(commandText, fromChat) {
       await generateAndInsertWordContent(commandText);
       return true;
     }
+
+    if (isWordDocumentSummaryCommand(commandText)) {
+      await processWholeWordDocument('summary', commandText);
+      return true;
+    }
+
+    if (isWordDocumentReviewCommand(commandText)) {
+      await processWholeWordDocument('review', commandText);
+      return true;
+    }
   }
 
   if (currentHost === 'Excel' && isExcelAnalysisSheetCommand(commandText)) {
@@ -503,10 +516,13 @@ async function planDocumentAction(commandText) {
           'word_replace：替换 Word 正文中的文本，必须给出 searchText 和 replacementText。',
           'word_rewrite_selection：改写 Word 当前选区，适用于润色、缩短、扩写、改正式、翻译等，必须给出 instruction。',
           'word_insert：在 Word 当前光标或选区写入新内容，必须给出 instruction。',
+          'word_summarize_document：总结或介绍 Word 整篇文档，适用于总结全文、总结这篇文章、介绍这首词、分析当前文档、提炼大纲，必须给出 instruction。',
+          'word_review_document：审稿 Word 整篇文档，适用于检查全文问题、错别字、逻辑问题、结构反馈，必须给出 instruction。',
           'excel_analysis_sheet：读取 Excel 当前选区并创建分析工作表，必须给出 instruction。',
           '输出格式：{"action":"chat"}、{"action":"word_replace","searchText":"A","replacementText":"B"} 或 {"action":"word_rewrite_selection","instruction":"润色当前选区"}。',
           '不要把“文档中的”“正文里的”等位置描述放入 searchText。',
           '用户要求润色、缩短、扩写、改正式、翻译当前内容，且 hasSelection 为 true 时，优先使用 word_rewrite_selection。',
+          '用户明确要求总结、概括、提炼大纲、审稿、检查全文或反馈整篇文档时，使用对应的整篇文档 action，不要使用 chat。',
         ].join('\n'),
       },
       {
@@ -567,6 +583,16 @@ async function executePlannedAction(action, commandText, fromChat) {
     return true;
   }
 
+  if (currentHost === 'Word' && action.action === 'word_summarize_document') {
+    await processWholeWordDocument('summary', action.instruction || commandText);
+    return true;
+  }
+
+  if (currentHost === 'Word' && action.action === 'word_review_document') {
+    await processWholeWordDocument('review', action.instruction || commandText);
+    return true;
+  }
+
   if (currentHost === 'Excel' && action.action === 'excel_analysis_sheet') {
     await previewExcelAnalysisToSheet(action.instruction || commandText, fromChat);
     return true;
@@ -624,6 +650,14 @@ function validatePlannedAction(action) {
     action.instruction = action.instruction.trim();
     return { valid: true };
   }
+  if (action.action === 'word_summarize_document' || action.action === 'word_review_document') {
+    if (currentHost !== 'Word') return { valid: false, reason: '当前不是 Word' };
+    if (typeof action.instruction !== 'string' || !action.instruction.trim()) {
+      return { valid: false, reason: '缺少 instruction' };
+    }
+    action.instruction = action.instruction.trim();
+    return { valid: true };
+  }
   if (action.action === 'excel_analysis_sheet') {
     if (currentHost !== 'Excel') return { valid: false, reason: '当前不是 Excel' };
     if (typeof action.instruction !== 'string' || !action.instruction.trim()) {
@@ -673,6 +707,158 @@ async function generateAndInsertWordContent(commandText) {
     renderChatMessages();
     showToast(`写入失败: ${err.message}`);
   }
+}
+
+async function processWholeWordDocument(mode, instruction) {
+  const sendBtn = document.getElementById('btn-send');
+  sendBtn.disabled = true;
+  const assistantMessage = addMessage('assistant', '正在读取 Word 正文...', { pending: true });
+
+  try {
+    const bodyText = (await getWordBodyText()).trim();
+    if (!bodyText) {
+      throw new Error('当前 Word 文档没有可读取的正文内容。');
+    }
+
+    const chunks = splitDocumentText(bodyText);
+    const chunkResults = [];
+    assistantMessage.content = `已读取正文，约 ${bodyText.length} 字，拆分为 ${chunks.length} 段处理。`;
+    renderChatMessages();
+
+    for (let index = 0; index < chunks.length; index += 1) {
+      assistantMessage.content = `正在处理第 ${index + 1} / ${chunks.length} 段...`;
+      renderChatMessages();
+      const result = await analyzeDocumentChunk(mode, instruction, chunks[index], index + 1, chunks.length);
+      chunkResults.push(result);
+    }
+
+    assistantMessage.content = '正在合并分段结果...';
+    renderChatMessages();
+
+    const finalText = await combineDocumentResults(mode, instruction, chunkResults);
+    assistantMessage.content = finalText;
+    assistantMessage.pending = false;
+    renderChatMessages();
+  } catch (err) {
+    assistantMessage.content = `整篇文档处理失败: ${err.message}`;
+    assistantMessage.pending = false;
+    assistantMessage.error = true;
+    renderChatMessages();
+  } finally {
+    sendBtn.disabled = false;
+  }
+}
+
+async function analyzeDocumentChunk(mode, instruction, chunkText, chunkIndex, chunkTotal) {
+  const isReview = mode === 'review';
+  const systemPrompt = isReview
+    ? [
+      '你是专业的 Word 文档审稿助手。',
+      '你正在处理长文档的一个分段，只基于当前分段输出审稿结果。',
+      '重点找结构、逻辑、表达、错别字、病句和明显不一致之处。',
+      '如果没有明显问题，请简短说明“本段未发现明显问题”。',
+      '输出要简洁，不要改写全文。',
+    ].join('\n')
+    : [
+      '你是专业的 Word 文档总结助手。',
+      '你正在处理长文档的一个分段，只基于当前分段提炼信息。',
+      '保留关键事实、观点、论据和小标题线索。',
+      '输出控制在 500 字以内。',
+    ].join('\n');
+
+  return await completeChat([
+    { role: 'system', content: systemPrompt },
+    {
+      role: 'user',
+      content: [
+        `用户任务：${instruction}`,
+        `当前分段：${chunkIndex} / ${chunkTotal}`,
+        '',
+        chunkText,
+      ].join('\n'),
+    },
+  ], getSelectedModelConfig());
+}
+
+async function combineDocumentResults(mode, instruction, chunkResults) {
+  const isReview = mode === 'review';
+  const compactResults = await compactDocumentResultsIfNeeded(chunkResults);
+  const systemPrompt = isReview
+    ? [
+      '你是专业的 Word 文档审稿助手。',
+      '现在需要基于各分段审稿结果，合并成整篇文档反馈。',
+      '输出结构：总体评价、主要问题、逐项修改建议、优先处理项。',
+      '不要编造原文中没有的信息。',
+      '只给反馈，不要直接生成改写后的全文。',
+    ].join('\n')
+    : [
+      '你是专业的 Word 文档总结助手。',
+      '现在需要基于各分段摘要，合并成整篇文档总结。',
+      '输出结构：一句话摘要、核心要点、文章大纲、值得关注的问题或亮点。',
+      '不要编造原文中没有的信息。',
+    ].join('\n');
+
+  return await completeChat([
+    { role: 'system', content: systemPrompt },
+    {
+      role: 'user',
+      content: [
+        `用户任务：${instruction}`,
+        '',
+        compactResults.map((result, index) => `## 分段 ${index + 1}\n${result}`).join('\n\n'),
+      ].join('\n'),
+    },
+  ], getSelectedModelConfig());
+}
+
+async function compactDocumentResultsIfNeeded(results) {
+  const joined = results.join('\n\n');
+  if (joined.length <= DOCUMENT_COMBINE_MAX_CHARS) return results;
+
+  const compacted = [];
+  for (const result of results) {
+    compacted.push(await completeChat([
+      {
+        role: 'system',
+        content: '请把这段中间结果压缩到 250 字以内，保留关键事实、问题和结论，不要新增信息。',
+      },
+      { role: 'user', content: result },
+    ], getSelectedModelConfig()));
+  }
+  return compacted;
+}
+
+function splitDocumentText(text) {
+  const normalized = String(text || '').replace(/\r\n/g, '\n').trim();
+  if (!normalized) return [];
+
+  const paragraphs = normalized.split(/\n{2,}/).map(item => item.trim()).filter(Boolean);
+  const chunks = [];
+  let current = '';
+
+  for (const paragraph of paragraphs.length ? paragraphs : [normalized]) {
+    if (paragraph.length > DOCUMENT_CHUNK_MAX_CHARS) {
+      if (current) {
+        chunks.push(current);
+        current = '';
+      }
+      for (let start = 0; start < paragraph.length; start += DOCUMENT_CHUNK_MAX_CHARS) {
+        chunks.push(paragraph.slice(start, start + DOCUMENT_CHUNK_MAX_CHARS));
+      }
+      continue;
+    }
+
+    const next = current ? `${current}\n\n${paragraph}` : paragraph;
+    if (next.length > DOCUMENT_CHUNK_MAX_CHARS && current) {
+      chunks.push(current);
+      current = paragraph;
+    } else {
+      current = next;
+    }
+  }
+
+  if (current) chunks.push(current);
+  return chunks;
 }
 
 async function handleRollbackCommand(input) {
@@ -965,6 +1151,14 @@ function isExcelAnalysisSheetCommand(input) {
 
 function isWordInsertCommand(input) {
   return /(在|往|向)?文档(中|里)?/.test(input) && /(写|写入|插入|生成|创建|起草|撰写)/.test(input);
+}
+
+function isWordDocumentSummaryCommand(input) {
+  return /(总结|概括|提炼|梳理|大纲|摘要|介绍|解释|分析)/.test(input) && /(全文|整篇|整份|文档|文章|这篇|当前内容|这首|诗|词)/.test(input);
+}
+
+function isWordDocumentReviewCommand(input) {
+  return /(审稿|检查|校对|反馈|问题|错别字|病句|逻辑|结构)/.test(input) && /(全文|整篇|整份|文档|文章|这篇|当前内容)/.test(input);
 }
 
 function parseReplaceCommand(input) {
