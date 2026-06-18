@@ -35,6 +35,11 @@ let selectedModelId = '';
 let expandedModelIds = new Set();
 let lastRollback = null;
 let lastDocumentEvidence = [];
+let backendStatus = {
+  checked: false,
+  ok: false,
+  text: '后端：检测中',
+};
 const DOCUMENT_COMBINE_MAX_CHARS = 18000;
 const CHAT_STATE_KEY = 'taskpane_chat_state_v1';
 
@@ -46,6 +51,7 @@ Office.onReady((info) => {
   loadChatState();
   renderChatMessages();
   renderContextStatus();
+  checkBackendHealth();
 });
 
 function initUI() {
@@ -553,10 +559,14 @@ function clearSavedChatState() {
 }
 
 function renderContextStatus() {
+  const backendEl = document.getElementById('context-status-backend');
   const chatEl = document.getElementById('context-status-chat');
   const docEl = document.getElementById('context-status-doc');
   const evidenceEl = document.getElementById('context-status-evidence');
-  if (!chatEl || !docEl || !evidenceEl) return;
+  if (!backendEl || !chatEl || !docEl || !evidenceEl) return;
+
+  backendEl.textContent = backendStatus.text;
+  backendEl.classList.toggle('context-chip-muted', backendStatus.checked && !backendStatus.ok);
 
   const chatStatus = getConversationContextStatus(chatMessages);
   chatEl.textContent = chatStatus.compressed
@@ -574,6 +584,31 @@ function renderContextStatus() {
   evidenceEl.title = lastDocumentEvidence.length
     ? lastDocumentEvidence.map(item => `分段 ${item.index + 1}${item.heading ? `：${item.heading}` : ''}`).join('\n')
     : '';
+}
+
+async function checkBackendHealth() {
+  try {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 2500);
+    const response = await fetch('/api/health', { signal: controller.signal });
+    clearTimeout(timer);
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}`);
+    }
+    const data = await response.json();
+    backendStatus = {
+      checked: true,
+      ok: Boolean(data.ok),
+      text: data.ok ? `后端：正常 ${data.port || 30031}` : '后端：异常',
+    };
+  } catch {
+    backendStatus = {
+      checked: true,
+      ok: false,
+      text: '后端：未连接',
+    };
+  }
+  renderContextStatus();
 }
 
 function renderMarkdown(text) {

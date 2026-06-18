@@ -465,7 +465,7 @@ body {
 
 .context-chip {
   flex: 0 0 auto;
-  max-width: 46%;
+  max-width: 42%;
   padding: 3px 7px;
   border: 1px solid var(--border-soft);
   border-radius: 999px;

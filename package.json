@@ -1,0 +1,12 @@
+{
+  "name": "office-tools-local",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "local": "node scripts/local-dev.mjs",
+    "dev:frontend": "npm --prefix sidebar run dev",
+    "dev:backend": "npm --prefix agent-server run dev",
+    "sideload": "npm --prefix sidebar run sideload",
+    "build": "npm --prefix sidebar run build"
+  }
+}
