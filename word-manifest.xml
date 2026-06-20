@@ -9,21 +9,20 @@
   <Version>1.0.0.0</Version>
   <ProviderName>Personal</ProviderName>
   <DefaultLocale>zh-CN</DefaultLocale>
-  <DisplayName DefaultValue="NSSA_Office"/>
-  <Description DefaultValue="在 Word、Excel、PowerPoint 中调用大模型处理文档内容。"/>
+  <DisplayName DefaultValue="NSSA_Word"/>
+  <Description DefaultValue="在 Word 中调用大模型处理文档内容。"/>
   <IconUrl DefaultValue="https://localhost:30030/assets/icon-80.png"/>
   <HighResolutionIconUrl DefaultValue="https://localhost:30030/assets/icon-80.png"/>
   <SupportUrl DefaultValue="https://localhost:30030"/>
 
-  <!-- 声明支持三个宿主 -->
   <Hosts>
-    <Host Name="Document"/>      <!-- Word -->
-    <Host Name="Workbook"/>      <!-- Excel -->
-    <Host Name="Presentation"/>  <!-- PowerPoint -->
+    <Host Name="Document"/>
+    <Host Name="Workbook"/>
+    <Host Name="Presentation"/>
   </Hosts>
 
   <DefaultSettings>
-    <SourceLocation DefaultValue="https://localhost:30030/taskpane.html"/>
+    <SourceLocation DefaultValue="https://localhost:30030/word-taskpane.html"/>
   </DefaultSettings>
 
   <Permissions>ReadWriteDocument</Permissions>
@@ -31,8 +30,6 @@
   <VersionOverrides xmlns="http://schemas.microsoft.com/office/taskpaneappversionoverrides"
                     xsi:type="VersionOverridesV1_0">
     <Hosts>
-
-      <!-- ==================== Word ==================== -->
       <Host xsi:type="Document">
         <DesktopFormFactor>
           <FunctionFile resid="Commands.Url"/>
@@ -67,7 +64,6 @@
         </DesktopFormFactor>
       </Host>
 
-      <!-- ==================== Excel ==================== -->
       <Host xsi:type="Workbook">
         <DesktopFormFactor>
           <FunctionFile resid="Commands.Url"/>
@@ -102,7 +98,6 @@
         </DesktopFormFactor>
       </Host>
 
-      <!-- ==================== PowerPoint ==================== -->
       <Host xsi:type="Presentation">
         <DesktopFormFactor>
           <FunctionFile resid="Commands.Url"/>
@@ -136,7 +131,6 @@
           </ExtensionPoint>
         </DesktopFormFactor>
       </Host>
-
     </Hosts>
 
     <Resources>
@@ -147,16 +141,15 @@
       </bt:Images>
       <bt:Urls>
         <bt:Url id="Commands.Url" DefaultValue="https://localhost:30030/commands.html"/>
-        <bt:Url id="Taskpane.Url" DefaultValue="https://localhost:30030/taskpane.html"/>
+        <bt:Url id="Taskpane.Url" DefaultValue="https://localhost:30030/word-taskpane.html"/>
       </bt:Urls>
       <bt:ShortStrings>
-        <bt:String id="GroupLabel" DefaultValue="NSSA_Office"/>
-        <bt:String id="TaskPaneButton.Label" DefaultValue="打开 NSSA_Office"/>
+        <bt:String id="GroupLabel" DefaultValue="NSSA_Word"/>
+        <bt:String id="TaskPaneButton.Label" DefaultValue="打开 NSSA_Word"/>
       </bt:ShortStrings>
       <bt:LongStrings>
-        <bt:String id="TaskPaneButton.Tooltip" DefaultValue="调用大模型处理当前文档内容。"/>
+        <bt:String id="TaskPaneButton.Tooltip" DefaultValue="调用大模型处理当前 Word 文档。"/>
       </bt:LongStrings>
     </Resources>
-
   </VersionOverrides>
 </OfficeApp>

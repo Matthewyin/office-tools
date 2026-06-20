@@ -1,0 +1,2 @@
+const __vite__mapDeps=(i,m=__vite__mapDeps,d=(m.f||(m.f=["assets/taskpane-D742okLE.js","assets/taskpane-CD3l-dvD.js"])))=>i.map(i=>d[i]);
+import"./taskpane-D4rid16B.js";import{t as e}from"./preload-helper-zJ_50EbN.js";document.documentElement.dataset.officeApp=`excel`,await e(()=>import(`./taskpane-D742okLE.js`),__vite__mapDeps([0,1]));
