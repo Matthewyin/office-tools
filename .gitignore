@@ -122,6 +122,9 @@ celerybeat.pid
 
 # Environments
 .env
+.env.local
+agent-server/.env.local
+agent-server/.data/
 .venv
 env/
 venv/
@@ -215,6 +218,7 @@ $RECYCLE.BIN/
 *.lnk
 
 # Project specific
+node_modules/
 logs/
 
 # Temporary files
@@ -268,4 +272,3 @@ toptab/input/*.drawio
 .omc/
 resourceList.zip
 resourceList/
-

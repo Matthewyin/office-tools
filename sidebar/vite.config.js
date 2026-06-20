@@ -28,6 +28,9 @@ export default defineConfig({
     rollupOptions: {
       input: {
         taskpane: 'taskpane.html',
+        word: 'word-taskpane.html',
+        excel: 'excel-taskpane.html',
+        ppt: 'ppt-taskpane.html',
         commands: 'commands.html',
       },
     },

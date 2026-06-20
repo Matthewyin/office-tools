@@ -12,6 +12,13 @@ fs.copyFileSync(
   path.join(distDir, 'manifest.xml')
 );
 
+for (const name of ['word-manifest.xml', 'excel-manifest.xml', 'ppt-manifest.xml']) {
+  fs.copyFileSync(
+    path.join(rootDir, name),
+    path.join(distDir, name)
+  );
+}
+
 for (const name of ['icon-16.png', 'icon-32.png', 'icon-80.png']) {
   fs.copyFileSync(
     path.join(rootDir, 'assets', name),
@@ -19,4 +26,4 @@ for (const name of ['icon-16.png', 'icon-32.png', 'icon-80.png']) {
   );
 }
 
-console.log('已复制 manifest.xml 和 Office 图标到 dist。');
+console.log('已复制 manifest.xml、独立应用 manifest 和 Office 图标到 dist。');

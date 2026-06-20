@@ -7,7 +7,11 @@
     "dev": "vite",
     "build": "vite build && node scripts/postbuild.js",
     "preview": "vite preview",
-    "sideload": "node scripts/sideload.js"
+    "sideload": "node scripts/sideload.js",
+    "sideload:word": "node scripts/sideload.js word",
+    "sideload:excel": "node scripts/sideload.js excel",
+    "sideload:ppt": "node scripts/sideload.js ppt",
+    "test": "node scripts/test.mjs"
   },
   "devDependencies": {
     "office-addin-dev-certs": "^2.0.9",

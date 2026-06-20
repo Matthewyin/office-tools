@@ -16,6 +16,7 @@ export function createChatMessage(role, content, options = {}) {
     content,
     pending: Boolean(options.pending),
     error: Boolean(options.error),
+    aborted: Boolean(options.aborted),
   };
 }
 
@@ -102,6 +103,7 @@ function eligibleMessages(chatMessages) {
   return chatMessages.filter(message => (
     !message.pending
     && !message.error
+    && !message.aborted
     && message.content
     && (message.role === 'user' || message.role === 'assistant')
   ));

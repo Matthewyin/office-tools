@@ -9,7 +9,7 @@
   <Version>1.0.0.0</Version>
   <ProviderName>Personal</ProviderName>
   <DefaultLocale>zh-CN</DefaultLocale>
-  <DisplayName DefaultValue="AI 助手"/>
+  <DisplayName DefaultValue="NSSA_Office"/>
   <Description DefaultValue="在 Word、Excel、PowerPoint 中调用大模型处理文档内容。"/>
   <IconUrl DefaultValue="https://localhost:30030/assets/icon-80.png"/>
   <HighResolutionIconUrl DefaultValue="https://localhost:30030/assets/icon-80.png"/>
@@ -135,8 +135,8 @@
         <bt:Url id="Taskpane.Url" DefaultValue="https://localhost:30030/taskpane.html"/>
       </bt:Urls>
       <bt:ShortStrings>
-        <bt:String id="GroupLabel" DefaultValue="AI 助手"/>
-        <bt:String id="TaskPaneButton.Label" DefaultValue="打开 AI 助手"/>
+        <bt:String id="GroupLabel" DefaultValue="NSSA_Office"/>
+        <bt:String id="TaskPaneButton.Label" DefaultValue="打开 NSSA_Office"/>
       </bt:ShortStrings>
       <bt:LongStrings>
         <bt:String id="TaskPaneButton.Tooltip" DefaultValue="调用大模型处理当前文档内容。"/>

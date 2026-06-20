@@ -7,6 +7,11 @@
     "dev:frontend": "npm --prefix sidebar run dev",
     "dev:backend": "npm --prefix agent-server run dev",
     "sideload": "npm --prefix sidebar run sideload",
-    "build": "npm --prefix sidebar run build"
+    "sideload:word": "npm --prefix sidebar run sideload -- word",
+    "sideload:excel": "npm --prefix sidebar run sideload -- excel",
+    "sideload:ppt": "npm --prefix sidebar run sideload -- ppt",
+    "build": "npm --prefix sidebar run build",
+    "verify:backend": "npm --prefix agent-server run verify",
+    "test": "npm --prefix sidebar run test"
   }
 }

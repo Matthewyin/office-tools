@@ -63,17 +63,20 @@ export function searchDocumentContext(context, query, options = {}) {
   const limit = options.limit || DEFAULT_SEARCH_LIMIT;
   const terms = extractSearchTerms(query);
   if (!context?.chunks?.length) return { terms, matches: [] };
+  if (!terms.length) return { terms, matches: context.chunks.slice(0, Math.min(limit, context.chunks.length)) };
 
   const scored = context.chunks.map(chunk => ({
     chunk,
     score: scoreChunk(chunk, terms),
+    headingHit: hasHeadingHit(chunk, terms),
+    matchedTerms: getMatchedTerms(chunk, terms),
   }));
 
   const matches = scored
     .filter(item => item.score > 0)
-    .sort((a, b) => b.score - a.score || a.chunk.index - b.chunk.index)
+    .sort((a, b) => b.score - a.score || Number(b.headingHit) - Number(a.headingHit) || a.chunk.index - b.chunk.index)
     .slice(0, limit)
-    .map(item => item.chunk);
+    .map(item => enrichMatchedChunk(item));
 
   if (matches.length) return { terms, matches: expandNeighborChunks(context.chunks, matches, limit) };
   return { terms, matches: context.chunks.slice(0, Math.min(limit, context.chunks.length)) };
@@ -81,7 +84,7 @@ export function searchDocumentContext(context, query, options = {}) {
 
 export function formatDocumentMatchesForPrompt(matches) {
   return matches.map(chunk => [
-    `[分段 ${chunk.index + 1}${chunk.heading ? ` | 标题：${chunk.heading}` : ''}]`,
+    `[分段 ${chunk.index + 1}${chunk.heading ? ` | 标题：${chunk.heading}` : ''}${chunk.matchReason ? ` | 命中：${chunk.matchReason}` : ''}]`,
     clipText(chunk.text, CONTEXT_SNIPPET_MAX_CHARS),
   ].join('\n')).join('\n\n');
 }
@@ -168,16 +171,24 @@ function isLikelyHeading(paragraph) {
 
 function scoreChunk(chunk, terms) {
   if (!terms.length) return 0;
-  const haystack = `${chunk.heading}\n${chunk.text}\n${chunk.keywords.join(' ')}`.toLowerCase();
+  const heading = String(chunk.heading || '').toLowerCase();
+  const text = String(chunk.text || '').toLowerCase();
+  const keywords = String(chunk.keywords?.join(' ') || '').toLowerCase();
   let score = 0;
 
   for (const term of terms) {
     const normalized = term.toLowerCase();
     if (!normalized) continue;
-    const count = countOccurrences(haystack, normalized);
-    if (!count) continue;
-    score += count * Math.min(normalized.length, 8);
-    if (chunk.heading?.toLowerCase().includes(normalized)) score += 12;
+    const headingCount = countOccurrences(heading, normalized);
+    const textCount = countOccurrences(text, normalized);
+    const keywordCount = countOccurrences(keywords, normalized);
+    if (!headingCount && !textCount && !keywordCount) continue;
+
+    const weight = Math.min(normalized.length, 8);
+    score += headingCount * weight * 5;
+    score += textCount * weight;
+    score += keywordCount * Math.max(2, weight);
+    if (heading === normalized) score += 30;
   }
 
   return score;
@@ -185,14 +196,23 @@ function scoreChunk(chunk, terms) {
 
 function expandNeighborChunks(chunks, matches, limit) {
   const selected = new Map();
+
   for (const match of matches) {
-    for (const index of [match.index - 1, match.index, match.index + 1]) {
-      if (index >= 0 && index < chunks.length && selected.size < limit) {
-        selected.set(index, chunks[index]);
-      }
+    selected.set(match.index, match);
+  }
+
+  for (const match of matches) {
+    for (const index of [match.index - 1, match.index + 1]) {
+      if (selected.size >= limit) break;
+      if (index >= 0 && index < chunks.length) selected.set(index, {
+        ...chunks[index],
+        matchedTerms: [],
+        matchReason: '相邻段落补充',
+      });
     }
     if (selected.size >= limit) break;
   }
+
   return Array.from(selected.entries()).sort((a, b) => a[0] - b[0]).map(([, chunk]) => chunk);
 }
 
@@ -206,20 +226,55 @@ function extractSearchTerms(input) {
   const rawTerms = normalized.split(/\s+/).filter(Boolean);
   const terms = [];
   for (const term of rawTerms) {
-    if (isStopword(term)) continue;
-    if (/^[\u4e00-\u9fff]{5,}$/.test(term)) {
-      terms.push(term);
-      for (let size = 2; size <= 4; size += 1) {
-        for (let index = 0; index <= term.length - size; index += 1) {
-          terms.push(term.slice(index, index + size));
-        }
-      }
-      continue;
-    }
-    if (term.length >= 2) terms.push(term);
+    const parts = splitMixedTerm(term);
+    const candidates = parts.length > 1 ? [term, ...parts] : [term];
+    candidates.forEach(candidate => addSearchTerm(candidate, terms));
   }
 
   return Array.from(new Set(terms)).slice(0, 40);
+}
+
+function addSearchTerm(term, terms) {
+  if (isStopword(term)) return;
+  if (/^[\u4e00-\u9fff]{5,}$/.test(term)) {
+    terms.push(term);
+    for (let size = 2; size <= 4; size += 1) {
+      for (let index = 0; index <= term.length - size; index += 1) {
+        terms.push(term.slice(index, index + size));
+      }
+    }
+    return;
+  }
+  if (term.length >= 2) terms.push(term);
+}
+
+function splitMixedTerm(term) {
+  return String(term || '').match(/[\u4e00-\u9fff]+|[a-z0-9_]+/gi) || [];
+}
+
+function enrichMatchedChunk(item) {
+  return {
+    ...item.chunk,
+    score: item.score,
+    matchedTerms: item.matchedTerms,
+    matchReason: formatMatchReason(item),
+  };
+}
+
+function formatMatchReason(item) {
+  const terms = item.matchedTerms.slice(0, 6).join('、');
+  if (!terms) return '';
+  return `${item.headingHit ? '标题' : '正文'}：${terms}`;
+}
+
+function hasHeadingHit(chunk, terms) {
+  const heading = String(chunk.heading || '').toLowerCase();
+  return terms.some(term => countOccurrences(heading, term.toLowerCase()) > 0);
+}
+
+function getMatchedTerms(chunk, terms) {
+  const text = `${chunk.heading || ''}\n${chunk.text || ''}\n${chunk.keywords?.join(' ') || ''}`.toLowerCase();
+  return terms.filter(term => countOccurrences(text, term.toLowerCase()) > 0).slice(0, 12);
 }
 
 function isStopword(term) {

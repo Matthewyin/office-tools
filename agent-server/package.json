@@ -5,9 +5,17 @@
   "type": "module",
   "scripts": {
     "dev": "node src/server.js",
-    "start": "node src/server.js"
+    "start": "node src/server.js",
+    "test": "node scripts/test.mjs",
+    "verify": "node scripts/verify-tools.mjs"
   },
   "engines": {
     "node": ">=20"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.29.0",
+    "@tavily/core": "^0.7.6",
+    "openai": "^6.44.0",
+    "zod": "^4.4.3"
   }
 }
